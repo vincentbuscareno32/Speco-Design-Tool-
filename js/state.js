@@ -43,8 +43,16 @@ function renderProducts(){
     }
     return;
   }
+  const keywords=q.split(/\s+/).filter(Boolean);
   const exact=[],sw=[],contains=[];
-  PRODUCTS.forEach(p=>{const s=p.sku.toUpperCase();const d=p.description.toUpperCase();if(s===q)exact.push(p);else if(s.startsWith(q))sw.push(p);else if(s.includes(q)||d.includes(q))contains.push(p);});
+  PRODUCTS.forEach(p=>{
+    const s=p.sku.toUpperCase();const d=p.description.toUpperCase();
+    const allMatch=keywords.every(k=>s.includes(k)||d.includes(k));
+    if(!allMatch)return;
+    if(keywords.length===1&&s===q)exact.push(p);
+    else if(keywords.length===1&&s.startsWith(q))sw.push(p);
+    else contains.push(p);
+  });
   console.log('contains[0..2]',contains.slice(0,3).map(p=>({sku:p.sku,description:p.description})));
   [exact,sw,contains].forEach(a=>a.sort((a,b)=>a.sku.localeCompare(b.sku)));
   const filtered=[...exact,...sw,...contains].slice(0,100);
