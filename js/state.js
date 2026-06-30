@@ -44,6 +44,7 @@ function renderProducts(){
   }
   const exact=[],sw=[],contains=[];
   PRODUCTS.forEach(p=>{const s=p.sku.toUpperCase();const d=p.description.toUpperCase();if(s===q)exact.push(p);else if(s.startsWith(q))sw.push(p);else if(s.includes(q)||d.includes(q))contains.push(p);});
+  console.log('contains[0..2]',contains.slice(0,3).map(p=>({sku:p.sku,description:p.description})));
   [exact,sw,contains].forEach(a=>a.sort((a,b)=>a.sku.localeCompare(b.sku)));
   const filtered=[...exact,...sw,...contains].slice(0,100);
   if(!filtered.length){list.innerHTML=`<div style="padding:16px;text-align:center;color:#8A94AA;font-size:12px">No SKUs match "${q}"</div>`;return;}
