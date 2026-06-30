@@ -689,94 +689,9 @@ async function buildPDF(items,prog,setP){
   }
   drawFooter(pageNum);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // PAGE 2+ — PLACEMENT CALLOUTS
-  // ═══════════════════════════════════════════════════════════════════════════
-  setP(40,'Building callouts...');
-  const allCallouts=[
-    ...placements.map((pl,i)=>({...pl,num:i+1,type:'canvas'})),
-    ...mapMarkers.map((m,i)=>({product:m.product,num:placements.length+i+1,type:'map',lat:m.lat,lng:m.lng,x:0,y:0}))
-  ];
 
-  if(allCallouts.length>0){
-    pdf.addPage();pageNum++;
-    drawHeader('PLACEMENT DETAILS','Device callouts with FOV coverage \u2014 '+proj);
-    y=36;
-    drawSectionHeader('DEVICE PLACEMENT CALLOUTS',M,y);y+=12;
-
-    const COLS=2,CW=(PW-M*2-5)/COLS,CH=73;
-    const maxRows=Math.floor((PH-55-y)/(CH+5));
-
-    for(let i=0;i<allCallouts.length;i++){
-      const pl=allCallouts[i];
-      const rowOnPage=Math.floor(i/COLS)%maxRows;
-      if(i>0&&i%COLS===0&&rowOnPage===0){
-        drawFooter(pageNum);pdf.addPage();pageNum++;
-        drawHeader('PLACEMENT DETAILS (cont.)','');
-        y=36;drawSectionHeader('DEVICE PLACEMENT CALLOUTS (continued)',M,y);y+=12;
-      }
-      const col2=i%COLS;const rowInPage=Math.floor(i/COLS)%maxRows;
-      const cx=M+col2*(CW+5),cy=y+rowInPage*(CH+5);
-      const rgb=hexToRgb(cc(pl.product.category));
-
-      setP(40+Math.round((i/allCallouts.length)*30),'Callout '+(i+1)+' of '+allCallouts.length+'...');
-      const calloutImg=await captureCallout(pl,offCanvasForCallouts);
-      await new Promise(r=>setTimeout(r,0));
-
-      // Card background + border
-      setFill([230,235,245]);pdf.roundedRect(cx+0.6,cy+0.6,CW,CH,2,2,'F');
-      setFill(C.white);pdf.roundedRect(cx,cy,CW,CH,2,2,'F');
-      setDraw(C.border);pdf.setLineWidth(0.3);pdf.roundedRect(cx,cy,CW,CH,2,2,'S');
-
-      // Header bar — category color
-      setFill([rgb.r,rgb.g,rgb.b]);pdf.roundedRect(cx,cy,CW,8,2,2,'F');
-      pdf.rect(cx,cy+4,CW,4,'F');
-
-      // Icon in header
-      const hIconUrl=buildIconDataUrl(pl.product.category,20);
-      if(hIconUrl)pdf.addImage(hIconUrl,'PNG',cx+1.5,cy+0.8,6.2,6.2);
-      // Number badge in header
-      setFill(C.white);pdf.circle(cx+7,cy+1.5,2,'F');
-      setDraw([rgb.r,rgb.g,rgb.b]);pdf.setLineWidth(0.3);pdf.circle(cx+7,cy+1.5,2,'S');
-      setTxt([rgb.r,rgb.g,rgb.b]);pdf.setFontSize(4.5);pdf.setFont('helvetica','bold');
-      pdf.text(String(pl.num),cx+7,cy+2.3,{align:'center'});
-      // SKU — bold white
-      setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(8);
-      pdf.text(pl.product.sku,cx+11,cy+5.2);
-      // Source tag right-aligned
-      setTxt([255,255,255,0.7]);pdf.setFontSize(5.5);pdf.setFont('helvetica','normal');
-      setTxt([210,225,255]);
-      pdf.text(pl.type==='map'?'Google Maps \u00b7 Aerial':'Canvas View',cx+CW-2,cy+5.2,{align:'right'});
-
-      // Callout image
-      const iH=CH-21;
-      if(calloutImg){
-        pdf.addImage(calloutImg,'JPEG',cx+1,cy+9,CW-2,iH);
-        setDraw(C.border);pdf.setLineWidth(0.2);pdf.rect(cx+1,cy+9,CW-2,iH);
-      } else {
-        setFill(C.bodyBg);pdf.rect(cx+1,cy+9,CW-2,iH,'F');
-        setTxt(C.text3);pdf.setFontSize(7.5);pdf.text('Image unavailable',cx+CW/2,cy+9+iH/2,{align:'center'});
-      }
-
-      // Description + price footer
-      const footY=cy+CH-10;
-      setFill(C.bodyBg);pdf.rect(cx+1,footY,CW-2,10,'F');
-      setDraw(C.border);pdf.setLineWidth(0.2);pdf.line(cx+1,footY,cx+CW-1,footY);
-      setTxt(C.text1);pdf.setFont('helvetica','normal');pdf.setFontSize(5.5);
-      const dsc=pl.product.description.length>50?pl.product.description.substring(0,49)+'\u2026':pl.product.description;
-      pdf.text(dsc,cx+3,footY+5.5,{maxWidth:CW-30});
-      // Price pill
-      setFill(C.blue);pdf.roundedRect(cx+CW-23,footY+2,21,6,1.5,1.5,'F');
-      setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
-      pdf.text('$'+pl.product.map.toFixed(2),cx+CW-12.5,footY+6.3,{align:'center'});
-    }
-    drawFooter(pageNum);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // FINAL PAGE — BILL OF MATERIALS
-  // ═══════════════════════════════════════════════════════════════════════════
-  setP(75,'Generating Bill of Materials...');
+  // ═══ PAGE 2 — BILL OF MATERIALS ═══
+  setP(40,'Generating Bill of Materials...');
   pdf.addPage();pageNum++;
   drawHeader('BILL OF MATERIALS','Complete product list with MAP pricing \u2014 '+proj);
   y=36;
