@@ -689,8 +689,8 @@ async function buildPDF(items,prog,setP){
 
   // Table header
   const cols2=[
-    {l:'#',w:8},{l:'SKU',w:30},{l:'Description',w:85},
-    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:27,r:true}
+    {l:'#',w:8},{l:'SKU',w:30},{l:'Description',w:80},
+    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:32,r:true}
   ];
   const tableW=PW-M*2;
   setFill([10,61,143]);rect(M,y,tableW,8);
@@ -732,7 +732,7 @@ async function buildPDF(items,prog,setP){
     setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
     pdf.text('$'+it.product.map.toFixed(2),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
     setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text('$'+(it.product.map*it.qty).toFixed(2),tx+cols2[5].w-1,y+5.5,{align:'right'});
+    pdf.text('$'+(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[5].w-1,y+5.5,{align:'right'});
     y+=rh;
   });
 
