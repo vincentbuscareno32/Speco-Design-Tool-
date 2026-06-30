@@ -20,7 +20,6 @@ function makePItem(p){
 }
 function renderProducts(){
   const q=document.getElementById('searchInput').value.trim().toUpperCase();
-  console.log('renderProducts called, PRODUCTS length:', PRODUCTS.length, 'query:', q);
   const list=document.getElementById('prodList');
   list.innerHTML='';
   if(!q){
@@ -53,7 +52,6 @@ function renderProducts(){
     else if(keywords.length===1&&s.startsWith(q))sw.push(p);
     else contains.push(p);
   });
-  console.log('contains[0..2]',contains.slice(0,3).map(p=>({sku:p.sku,description:p.description})));
   [exact,sw,contains].forEach(a=>a.sort((a,b)=>a.sku.localeCompare(b.sku)));
   const filtered=[...exact,...sw,...contains].slice(0,100);
   if(!filtered.length){list.innerHTML=`<div style="padding:16px;text-align:center;color:#8A94AA;font-size:12px">No SKUs match "${q}"</div>`;return;}
