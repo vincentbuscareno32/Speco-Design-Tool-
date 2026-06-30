@@ -308,23 +308,14 @@ async function buildPDF(items,prog,setP){
 
   // ── HEADER (full-width navy with blue left accent strip) ──────────────────
   function drawHeader(title,sub){
-    // Slightly deeper blue header bar
-    setFill([22,100,210]);rect(0,0,PW,32);
-    // Logo — white transparent PNG placed directly on blue header
-    pdf.addImage(SPECO_LOGO,'PNG',M,5,28,15);
-    // Title — moved right to give logo breathing room
+    setFill([10,61,143]);rect(0,0,PW,32);
+    pdf.addImage(SPECO_LOGO,'PNG',M,5,32,17);
     setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(13);
-    pdf.text(title,M+32,14);
-    // Sub
-    if(sub){setTxt([220,235,255]);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.text(sub,M+32,20.5);}
-    // Right: date + client
+    pdf.text(title,M+36,14);
+    if(sub){setTxt([220,235,255]);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);pdf.text(sub,M+36,20.5);}
     setTxt([220,235,255]);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
     pdf.text(date,PW-M,12,{align:'right'});
     if(client){setTxt([220,235,255]);pdf.setFontSize(7);pdf.text(client,PW-M,19,{align:'right'});}
-    // MAP PRICING badge top-right — white pill with blue text
-    setFill(C.white);pdf.roundedRect(PW-M-22,23,22,6,1.5,1.5,'F');
-    setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(6);
-    pdf.text('MAP PRICING',PW-M-11,27,{align:'center'});
   }
 
   // ── FOOTER ────────────────────────────────────────────────────────────────
@@ -696,22 +687,13 @@ async function buildPDF(items,prog,setP){
   drawHeader('BILL OF MATERIALS','Complete product list with MAP pricing \u2014 '+proj);
   y=36;
 
-  // Summary card
-  const cats=[...new Set(items.map(it=>it.product.category))];
-  setFill(C.white);pdf.roundedRect(M,y,PW-M*2,12,2,2,'F');
-  setDraw(C.border);pdf.setLineWidth(0.3);pdf.roundedRect(M,y,PW-M*2,12,2,2,'S');
-  setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-  pdf.text(items.length+' line items  \u00b7  '+(placements.length+mapMarkers.length)+' total units  \u00b7  '+cats.length+' categor'+(cats.length===1?'y':'ies'),M+6,y+7.5);
-  y+=16;
-
   // Table header
   const cols2=[
-    {l:'#',w:7},{l:'SKU',w:28},{l:'Description',w:70},{l:'Category',w:32},
-    {l:'Qty',w:10,r:true},{l:'MAP Unit',w:22,r:true},{l:'MAP Total',w:25,r:true}
+    {l:'#',w:8},{l:'SKU',w:30},{l:'Description',w:85},
+    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:27,r:true}
   ];
   const tableW=PW-M*2;
-  // Header bar
-  setFill([22,100,210]);rect(M,y,tableW,8);
+  setFill([10,61,143]);rect(M,y,tableW,8);
   let tx=M+3;
   cols2.forEach(c=>{
     setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
@@ -725,7 +707,7 @@ async function buildPDF(items,prog,setP){
     if(y>PH-22){
       drawFooter(pageNum);pdf.addPage();pageNum++;
       drawHeader('BILL OF MATERIALS (cont.)','');y=36;
-      setFill([22,100,210]);rect(M,y,tableW,8);
+      setFill([10,61,143]);rect(M,y,tableW,8);
       tx=M+3;
       cols2.forEach(c=>{
         setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
@@ -735,54 +717,33 @@ async function buildPDF(items,prog,setP){
       y+=8;
     }
     const rh=8;
-    if(i%2===0){setFill(C.rowAlt);rect(M,y,tableW,rh);}
-    // Left accent stripe using category color
-    const rgb2=hexToRgb(cc(it.product.category));
-    setFill([rgb2.r,rgb2.g,rgb2.b]);rect(M,y,2,rh);
-    // Row divider
+    if(i%2===0){setFill([248,249,250]);rect(M,y,tableW,rh);}
     setDraw(C.border);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
-
     tx=M+3;
-    // # index
     setTxt(C.text3);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
     pdf.text(String(i+1),tx+1,y+5.5);tx+=cols2[0].w;
-    // Icon
-    const rowIcon=buildIconDataUrl(it.product.category,14);
-    if(rowIcon)pdf.addImage(rowIcon,'PNG',tx,y+0.8,5.2,5.2);
-    // SKU — bold navy monospaced style
     setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text(it.product.sku,tx+6.5,y+5.5);tx+=cols2[1].w;
-    // Description
-    const desc2=it.product.description.length>54?it.product.description.substring(0,53)+'\u2026':it.product.description;
+    pdf.text(it.product.sku,tx+1,y+5.5);tx+=cols2[1].w;
+    const desc2=it.product.description.length>68?it.product.description.substring(0,67)+'\u2026':it.product.description;
     setTxt(C.text1);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
     pdf.text(desc2,tx+1,y+5.2);tx+=cols2[2].w;
-    // Category — plain text, colored to match category
-    const catLabel=it.product.category.length>16?it.product.category.substring(0,15)+'\u2026':it.product.category;
-    setTxt([rgb2.r,rgb2.g,rgb2.b]);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
-    pdf.text(catLabel,tx+1,y+5.5);
-    tx+=cols2[3].w;
-    // Qty
     setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text(String(it.qty),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
-    // MAP unit
+    pdf.text(String(it.qty),tx+cols2[3].w-1,y+5.5,{align:'right'});tx+=cols2[3].w;
     setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-    pdf.text('$'+it.product.map.toFixed(2),tx+cols2[5].w-1,y+5.5,{align:'right'});tx+=cols2[5].w;
-    // MAP total (bold)
+    pdf.text('$'+it.product.map.toFixed(2),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
     setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text('$'+(it.product.map*it.qty).toFixed(2),tx+cols2[6].w-1,y+5.5,{align:'right'});
+    pdf.text('$'+(it.product.map*it.qty).toFixed(2),tx+cols2[5].w-1,y+5.5,{align:'right'});
     y+=rh;
   });
 
-  // Total row — clean light design, no heavy bar
+  // Total row
   const totalRowH=10;
-  setDraw(C.borderDark);pdf.setLineWidth(0.5);pdf.line(M,y,M+tableW,y);
-  setFill(C.blueDim);rect(M,y,tableW,totalRowH);
+  setFill(C.white);rect(M,y,tableW,totalRowH);
+  setDraw(C.navy);pdf.setLineWidth(0.6);pdf.line(M,y,M+tableW,y);
   setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(8);
   pdf.text('PROJECT TOTAL (MAP)',M+4,y+6.5);
   setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(9);
   pdf.text('$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-M-2,y+7,{align:'right'});
-  setTxt(C.text3);pdf.setFont('helvetica','normal');pdf.setFontSize(6);
-  pdf.text('All prices are MAP \u2014 Minimum Advertised Price for distribution reference',M+4,y+totalRowH-1.5);
 
   drawFooter(pageNum);
   setP(97,'Saving PDF...');
