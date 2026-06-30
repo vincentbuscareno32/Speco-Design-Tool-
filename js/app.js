@@ -878,7 +878,6 @@ async function buildPDF(items,prog,setP){
 }
 
 renderProducts();
-</script>
 
 <!-- LENS PREVIEW POPUP -->
 <div class="lens-preview" id="lensPreview">
@@ -897,4 +896,3 @@ renderProducts();
   <button class="lens-expand-close" onclick="closeLensExpand(null,true)">Close ✕</button>
 </div>
 
-<script>

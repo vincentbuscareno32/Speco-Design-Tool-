@@ -209,6 +209,3 @@ document.addEventListener('keydown',e=>{
 });
 
 // Static image used — no canvas build needed
-</script>
-</body>
-</html>
