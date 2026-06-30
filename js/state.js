@@ -20,6 +20,7 @@ function makePItem(p){
 }
 function renderProducts(){
   const q=document.getElementById('searchInput').value.trim().toUpperCase();
+  console.log('renderProducts called, PRODUCTS length:', PRODUCTS.length, 'query:', q);
   const list=document.getElementById('prodList');
   list.innerHTML='';
   if(!q){
