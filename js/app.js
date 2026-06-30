@@ -878,21 +878,3 @@ async function buildPDF(items,prog,setP){
 }
 
 renderProducts();
-
-<!-- LENS PREVIEW POPUP -->
-<div class="lens-preview" id="lensPreview">
-  <div class="lens-preview-header">
-    <span class="lens-preview-badge" id="lpBadge">2.8mm · 4MP · 107°</span>
-    <span class="lens-preview-sub">15ft mount height</span>
-  </div>
-  <img id="lpImg" style="width:100%;border-radius:4px;display:block;border:1px solid #1c2333" src="" style="width:100%;border-radius:5px;display:block;border:1px solid #1c2333" alt="Camera view comparison" />
-  <button class="lens-preview-expand" onclick="openLensExpand(event)">&#x26F6; View Full Screen</button>
-</div>
-
-<!-- FULLSCREEN EXPAND -->
-<div class="lens-expand-overlay" id="lensExpand" onclick="closeLensExpand(event)">
-  <div class="lens-expand-title" id="leTitle">4MP · 2.8mm Lens · Quad Distance Comparison · Click outside to close</div>
-  <img id="lpExpandImg" src="" style="max-width:96vw;max-height:94vh;width:auto;height:auto;border-radius:6px;display:block;pointer-events:none" alt="Camera view full screen" />
-  <button class="lens-expand-close" onclick="closeLensExpand(null,true)">Close ✕</button>
-</div>
-
