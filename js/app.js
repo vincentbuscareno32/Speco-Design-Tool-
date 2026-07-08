@@ -684,66 +684,75 @@ async function buildPDF(items,prog,setP){
   // ═══ PAGE 2 — BILL OF MATERIALS ═══
   setP(40,'Generating Bill of Materials...');
   pdf.addPage();pageNum++;
-  drawHeader('BILL OF MATERIALS','Complete product list with MAP pricing \u2014 '+proj);
+
+  // ── BOM page white header ───────────────────────────────────────────────────────────
+  setFill(C.white);rect(0,0,PW,30);
+  pdf.addImage(SPECO_LOGO,'PNG',M,5,32,17);
+  setTxt([10,61,143]);pdf.setFont('helvetica','bold');pdf.setFontSize(15);
+  pdf.text('BILL OF MATERIALS',M+36,13);
+  setTxt([80,95,115]);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
+  pdf.text('Complete product list with MAP pricing — '+proj,M+36,20);
+  setTxt([80,95,115]);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
+  pdf.text(date,PW-M,10,{align:'right'});
+  if(client){pdf.text(client,PW-M,17,{align:'right'});}
+  setDraw([210,215,225]);pdf.setLineWidth(0.4);pdf.line(M,30,PW-M,30);
+
   y=36;
-
-  // Table header
-  const cols2=[
-    {l:'#',w:8},{l:'SKU',w:30},{l:'Description',w:80},
-    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:32,r:true}
-  ];
   const tableW=PW-M*2;
-  setFill([10,61,143]);rect(M,y,tableW,8);
-  let tx=M+3;
-  cols2.forEach(c=>{
-    setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
-    pdf.text(c.l.toUpperCase(),c.r?tx+c.w-1:tx+1,y+5.2,{align:c.r?'right':'left'});
-    tx+=c.w;
-  });
-  y+=8;
 
-  // Table rows
+  // ── Column definitions ──────────────────────────────────────────────────────────────────
+  const cols2=[
+    {l:'#',w:8},{l:'SKU',w:28},{l:'Description',w:88},
+    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:27,r:true}
+  ];
+
+  function drawBOMHeader(){
+    setFill([10,61,143]);rect(M,y,tableW,8);
+    let tx=M+3;
+    cols2.forEach(c=>{
+      setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
+      pdf.text(c.l.toUpperCase(),c.r?tx+c.w-1:tx+1,y+5.2,{align:c.r?'right':'left'});
+      tx+=c.w;
+    });
+    y+=8;
+  }
+  drawBOMHeader();
+
+  // ── Table rows ────────────────────────────────────────────────────────────────────────
   items.forEach((it,i)=>{
     if(y>PH-22){
-      drawFooter(pageNum);pdf.addPage();pageNum++;
-      drawHeader('BILL OF MATERIALS (cont.)','');y=36;
-      setFill([10,61,143]);rect(M,y,tableW,8);
-      tx=M+3;
-      cols2.forEach(c=>{
-        setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
-        pdf.text(c.l.toUpperCase(),c.r?tx+c.w-1:tx+1,y+5.2,{align:c.r?'right':'left'});
-        tx+=c.w;
-      });
-      y+=8;
+      pdf.addPage();pageNum++;
+      setFill(C.white);rect(0,0,PW,PH);
+      y=M;
+      drawBOMHeader();
     }
     const rh=8;
-    if(i%2===0){setFill([248,249,250]);rect(M,y,tableW,rh);}
-    setDraw(C.border);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
-    tx=M+3;
-    setTxt(C.text3);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
+    setFill(C.white);rect(M,y,tableW,rh);
+    setDraw([210,215,225]);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
+    let tx=M+3;
+    setTxt([150,160,175]);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
     pdf.text(String(i+1),tx+1,y+5.5);tx+=cols2[0].w;
-    setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
+    setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
     pdf.text(it.product.sku,tx+1,y+5.5);tx+=cols2[1].w;
-    const desc2=it.product.description.length>68?it.product.description.substring(0,67)+'\u2026':it.product.description;
-    setTxt(C.text1);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
+    const desc2=it.product.description.length>72?it.product.description.substring(0,71)+'…':it.product.description;
+    setTxt([55,65,81]);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
     pdf.text(desc2,tx+1,y+5.2);tx+=cols2[2].w;
-    setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
+    setTxt([55,65,81]);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
     pdf.text(String(it.qty),tx+cols2[3].w-1,y+5.5,{align:'right'});tx+=cols2[3].w;
-    setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-    pdf.text('$'+it.product.map.toFixed(2),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
-    setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
+    setTxt(C.blue);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
+    pdf.text('$'+it.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
+    setTxt([10,61,143]);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
     pdf.text('$'+(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[5].w-1,y+5.5,{align:'right'});
     y+=rh;
   });
 
-  // Total row
-  const totalRowH=10;
-  setFill(C.white);rect(M,y,tableW,totalRowH);
-  setDraw(C.navy);pdf.setLineWidth(0.6);pdf.line(M,y,M+tableW,y);
-  setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(8);
-  pdf.text('PROJECT TOTAL (MAP)',M+4,y+6.5);
-  setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(9);
-  pdf.text('$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-M-2,y+7,{align:'right'});
+  // ── Total row ──────────────────────────────────────────────────────────────────────────
+  setFill(C.white);rect(M,y,tableW,12);
+  setDraw([10,61,143]);pdf.setLineWidth(0.7);pdf.line(M,y,M+tableW,y);
+  setTxt([10,61,143]);pdf.setFont('helvetica','bold');pdf.setFontSize(8);
+  pdf.text('PROJECT TOTAL (MAP)',M+4,y+7.5);
+  setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+  pdf.text('$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),PW-M-2,y+8,{align:'right'});
 
   drawFooter(pageNum);
   setP(97,'Saving PDF...');
