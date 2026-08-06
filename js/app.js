@@ -731,11 +731,14 @@ async function buildPDF(items,prog,setP){
 
   // ── BOM page white header ───────────────────────────────────────────────────────────
   setFill(C.white);rect(0,0,PW,30);
-  pdf.addImage(SPECO_LOGO,'PNG',M,5,32,17);
+  // The Speco wordmark is white/outline artwork designed to sit on the navy header (page 1).
+  // On this white header it's nearly invisible, so give it a navy badge to sit on.
+  setFill([10,61,143]);pdf.roundedRect(M,4,34,19,1.5,1.5,'F');
+  pdf.addImage(SPECO_LOGO,'PNG',M+1,5,32,17);
   setTxt([10,61,143]);pdf.setFont('helvetica','bold');pdf.setFontSize(15);
-  pdf.text('BILL OF MATERIALS',M+36,13);
+  pdf.text('BILL OF MATERIALS',M+40,13);
   setTxt([80,95,115]);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
-  pdf.text('Complete product list with MAP pricing — '+proj,M+36,20);
+  pdf.text('Complete product list with MAP pricing — '+proj,M+40,20);
   setTxt([80,95,115]);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
   pdf.text(date,PW-M,10,{align:'right'});
   if(client){pdf.text(client,PW-M,17,{align:'right'});}
@@ -753,10 +756,12 @@ async function buildPDF(items,prog,setP){
   const PRICE_UNIT=[199,92,64]; // warm terracotta accent for unit price
   function drawBOMHeader(){
     setFill([10,61,143]);rect(M,y,tableW,9);
-    let tx=M+3;
+    let tx=M; // starts at the table's left edge (not M+3) so column widths land exactly
+              // on the table's right edge with no drift — the old +3 offset was what
+              // pushed TOTAL ~1mm past the table border, clipping it.
     cols2.forEach(c=>{
       setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-      pdf.text(c.l.toUpperCase(),c.r?tx+c.w-2:tx+1,y+5.9,{align:c.r?'right':'left'});
+      pdf.text(c.l.toUpperCase(),c.r?tx+c.w-2:tx+2,y+5.9,{align:c.r?'right':'left'});
       tx+=c.w;
     });
     y+=9;
@@ -774,14 +779,14 @@ async function buildPDF(items,prog,setP){
     }
     if(i%2===1){setFill(C.rowAlt);rect(M,y,tableW,rh);}
     setDraw(C.border);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
-    let tx=M+3;
+    let tx=M;
     setTxt(C.text3);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-    pdf.text(String(i+1),tx+1,y+7);tx+=cols2[0].w;
+    pdf.text(String(i+1),tx+2,y+7);tx+=cols2[0].w;
     setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);
-    pdf.text(it.product.sku,tx+1,y+7);tx+=cols2[1].w;
+    pdf.text(it.product.sku,tx+2,y+7);tx+=cols2[1].w;
     const desc2=it.product.description.length>70?it.product.description.substring(0,69)+'…':it.product.description;
     setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
-    pdf.text(desc2,tx+1,y+6.8);tx+=cols2[2].w;
+    pdf.text(desc2,tx+2,y+6.8);tx+=cols2[2].w;
     setTxt(C.text1);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
     pdf.text(String(it.qty),tx+cols2[3].w-2,y+7,{align:'right'});tx+=cols2[3].w;
     setTxt(PRICE_UNIT);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
