@@ -110,18 +110,20 @@ function drawFovCone(ctx,pl){
   ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(5,18);ctx.stroke();
   ctx.restore();ctx.restore();
 
-  // Motorized zoom slider
-  if(specs.isMotorized){
-    const z=pl.zoomPos||0;
-    const sx=pl.x-22,sy=pl.y+outerR+16,sw=44,sh=5;
+  // Live focal-length readout while actively zoom-dragging (motorized only) —
+  // shown only during the drag itself, not as permanent on-screen clutter.
+  if(specs.isMotorized&&pl._zoomDragActive){
+    const mm=(specs.currentMm!=null?specs.currentMm:specs.wideMm).toFixed(1)+'mm';
+    const lx=ppx,ly=ppy-22;
     ctx.save();
-    ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(sx,sy,sw,sh);
-    ctx.fillStyle=col;ctx.fillRect(sx,sy,sw*z,sh);
-    ctx.strokeStyle=col;ctx.lineWidth=1;ctx.strokeRect(sx,sy,sw,sh);
-    ctx.beginPath();ctx.arc(sx+sw*z,sy+sh/2,5,0,Math.PI*2);
-    ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
-    ctx.font='8px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';
-    ctx.fillText('W\u2194T',pl.x,sy+sh+10);
+    ctx.font='bold 11px sans-serif';
+    const tw=ctx.measureText(mm).width;
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(lx-tw/2-7,ly-10,tw+14,20,10);else ctx.rect(lx-tw/2-7,ly-10,tw+14,20);
+    ctx.fill();
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(mm,lx,ly+1);
     ctx.restore();
   }
 }

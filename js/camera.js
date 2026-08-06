@@ -44,8 +44,18 @@ function parseCameraSpecs(product){
   const sku=product.sku;
   if(DORI_OVERRIDE[sku]){
     const o=DORI_OVERRIDE[sku];
+    // Verified data can describe either a fixed lens or a motorized (wide/tele) lens —
+    // previously this branch always returned isMotorized:false, which meant any verified
+    // spec sheet for a zoom camera would silently lose its zoom behavior. Support both.
+    if(o.isMotorized){
+      return{fovDeg:o.wideFov||88,lensLabel:(o.wideMm||'?')+'-'+(o.teleMm||'?')+'mm',
+             isMotorized:true,wideMm:o.wideMm,teleMm:o.teleMm,
+             wideFov:o.wideFov,teleFov:o.teleFov,
+             wideDori:o.wideDori||{},teleDori:o.teleDori||{},
+             irFt:o.irFt||100,source:'verified'};
+    }
     return{fovDeg:o.fovDeg||88,lensLabel:o.lensLabel||'',isMotorized:false,
-           dori:o,irFt:o.irFt||100,source:'verified'};
+           dori:o.dori||o,irFt:o.irFt||100,source:'verified'};
   }
   let mp=4;
   for(const m of[16,12,8,5,4,2]){if(desc.includes(m+'mp')||desc.includes(m+' mp')){mp=m;break;}}
@@ -80,14 +90,32 @@ function getEffectiveSpecs(pl){
   const specs=parseCameraSpecs(pl.product);
   if(!specs)return null;
   if(specs.isMotorized){
-    const z=pl.zoomPos||0;
-    const fovDeg=Math.round(specs.wideFov+(specs.teleFov-specs.wideFov)*z);
+    const z=Math.max(0,Math.min(pl.zoomPos||0,1));
+    const mm=specs.wideMm+(specs.teleMm-specs.wideMm)*z;
+    // Route through the FOV/mm lookup table rather than blending wideFov/teleFov degrees
+    // linearly — field of view is an arctangent function of focal length, not a straight
+    // line, so a linear degree-blend visibly bows away from the true angle mid-zoom,
+    // especially over a wide ratio like 2.8-12mm (4x+).
+    const fovDeg=interpFov(mm);
     const dori={};
     for(const k of Object.keys(DORI_PPM)){
       dori[k]=Math.round((specs.wideDori[k]||0)+((specs.teleDori[k]||0)-(specs.wideDori[k]||0))*z);
     }
-    return{...specs,fovDeg,dori,lensLabel:((specs.wideMm+(specs.teleMm-specs.wideMm)*z).toFixed(1))+'mm'};
+    return{...specs,fovDeg,dori,lensLabel:mm.toFixed(1)+'mm',currentMm:mm};
   }
   return specs;
+}
+
+// Given a target detection range (ft), solve for the zoomPos that produces it.
+// Detection range is constructed as a linear interpolation between wideDori/teleDori
+// (see getEffectiveSpecs above), so this inversion is exact — not an approximation —
+// and stays exact whether wideDori/teleDori come from the calculated formula or from
+// verified manufacturer data via DORI_OVERRIDE, since both flow through the same shape.
+function zoomPosForRangeFt(specs,targetFt){
+  if(!specs||!specs.isMotorized)return 0;
+  const w=(specs.wideDori&&specs.wideDori.detection)||0;
+  const t=(specs.teleDori&&specs.teleDori.detection)||0;
+  if(t===w)return 0;
+  return Math.max(0,Math.min((targetFt-w)/(t-w),1));
 }
 

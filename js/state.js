@@ -1,4 +1,5 @@
 function ftToM(ft){return ft*0.3048;}
+function mToFt(m){return m/0.3048;}
 function metersPerPixel(lat,zoom){return 156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,zoom);}
 
 // ── STATE ─────────────────────────────────────────────────────────────────

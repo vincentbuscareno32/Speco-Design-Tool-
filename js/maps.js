@@ -128,6 +128,21 @@ function drawMapFov(){
     ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(5,18);ctx.stroke();
     ctx.restore();
     ctx.restore();
+    // Live focal-length readout while actively zoom-dragging (motorized only)
+    if(eSpecs.isMotorized&&m._zoomDragActive){
+      const mmLbl=(eSpecs.currentMm!=null?eSpecs.currentMm:eSpecs.wideMm).toFixed(1)+'mm';
+      const lx=ppx,ly=ppy-22;
+      ctx.save();
+      ctx.font='bold 11px sans-serif';
+      const tw=ctx.measureText(mmLbl).width;
+      ctx.fillStyle=col;
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(lx-tw/2-7,ly-10,tw+14,20,10);else ctx.rect(lx-tw/2-7,ly-10,tw+14,20);
+      ctx.fill();
+      ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(mmLbl,lx,ly+1);
+      ctx.restore();
+    }
     // Store both handle positions
     m._fovHandle={x:hx,y:hy};
     m._fovPersonHandle={x:ppx,y:ppy};
@@ -284,14 +299,24 @@ _overlay.addEventListener('mousemove',e=>{
         m.fovAngle=Math.atan2(my-pos.y,mx-pos.x);
       } else {
         const dist=Math.hypot(mx-pos.x,my-pos.y);
-        const specs3=parseCameraSpecs(m.product);
-        const lat=googleMapObj.getCenter().lat();
-        const zoom=googleMapObj.getZoom();
-        const mpp=metersPerPixel(lat,zoom);
-        const dori3=specs3&&specs3.dori?specs3.dori:(specs3&&specs3.wideDori?specs3.wideDori:{});
-        const detFt3=dori3.detection||specs3&&specs3.irFt||100;
-        const base=ftToM(detFt3)/mpp;
-        m.fovRangeMult=Math.max(0.1,Math.min(dist/base,1.0));
+        const eSpecs2=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
+        if(eSpecs2&&eSpecs2.isMotorized){
+          const lat=googleMapObj.getCenter().lat();
+          const zoom=googleMapObj.getZoom();
+          const mpp=metersPerPixel(lat,zoom);
+          const distFt=mToFt(dist*mpp);
+          m.zoomPos=zoomPosForRangeFt(eSpecs2,distFt);
+          m._zoomDragActive=true;
+        } else {
+          const specs3=parseCameraSpecs(m.product);
+          const lat=googleMapObj.getCenter().lat();
+          const zoom=googleMapObj.getZoom();
+          const mpp=metersPerPixel(lat,zoom);
+          const dori3=specs3&&specs3.dori?specs3.dori:{};
+          const detFt3=dori3.detection||specs3&&specs3.irFt||100;
+          const base=ftToM(detFt3)/mpp;
+          m.fovRangeMult=Math.max(0.1,Math.min(dist/base,1.0));
+        }
       }
       drawMapFov();
     }
@@ -349,7 +374,12 @@ _overlay.addEventListener('mouseup',e=>{
 window.addEventListener('mouseup',e=>{
   mapPlacePending=null; // always clear on any mouseup anywhere
   _activeDragWrap=null; // always clear marker drag
-  if(mapFovDragIdx>=0){mapFovDragIdx=-1;mapFovDragType=null;}
+  if(mapFovDragIdx>=0){
+    const m=mapMarkers[mapFovDragIdx];
+    if(m)m._zoomDragActive=false;
+    mapFovDragIdx=-1;mapFovDragType=null;
+    drawMapFov();
+  }
   if(dragIdx>=0){dragIdx=-1;redraw();}
 });
 

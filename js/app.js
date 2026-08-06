@@ -47,10 +47,19 @@ function setupCanvas(cvs,tipEl,sk){
         } else {
           const dist=Math.hypot(x-pl.x,y-pl.y);
           const specs=getEffectiveSpecs(pl);
-          const dori=specs&&specs.dori?specs.dori:{};
-          const detFt=(dori.detection||specs&&specs.irFt||100);
-          const basePixels=detFt*2.5;
-          pl.fovRangeMult=Math.max(0.1,Math.min(dist/basePixels,1.0));
+          if(specs&&specs.isMotorized){
+            // Dragging the range handle IS the zoom control for motorized lenses —
+            // solve for the focal length that produces this exact range, rather than
+            // stacking a separate multiplier on top (that would double-count the zoom).
+            const distFt=dist/2.5;
+            pl.zoomPos=zoomPosForRangeFt(specs,distFt);
+            pl._zoomDragActive=true;
+          } else {
+            const dori=specs&&specs.dori?specs.dori:{};
+            const detFt=(dori.detection||specs&&specs.irFt||100);
+            const basePixels=detFt*2.5;
+            pl.fovRangeMult=Math.max(0.1,Math.min(dist/basePixels,1.0));
+          }
         }
         redraw();
       }
@@ -71,6 +80,8 @@ function setupCanvas(cvs,tipEl,sk){
   cvs.addEventListener('mouseup',e=>{
     // FOV drag ended — clear state, NO placement
     if(fovDragging){
+      const pl=placements[fovDragging.idx];
+      if(pl)pl._zoomDragActive=false;
       fovDragging=null;
       mouseDownPos=null;
       cvs.style.cursor='default';
@@ -747,7 +758,9 @@ async function buildPDF(items,prog,setP){
   y=36;
   const tableW=PW-M*2;
 
-  // ── Column definitions (MUST sum to tableW=182 exactly — wider sums push columns off the page) ──
+  // ── Column definitions (MUST sum to tableW=182 exactly — widths that sum to more than
+  //    the printable page width push the right-most column(s) off the edge of the page,
+  //    which is what was clipping the TOTAL column) ────────────────────────────────────
   const cols2=[
     {l:'#',w:8},{l:'SKU',w:22},{l:'Description',w:88},
     {l:'Qty',w:14,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:26,r:true}
@@ -756,9 +769,9 @@ async function buildPDF(items,prog,setP){
   const PRICE_UNIT=[199,92,64]; // warm terracotta accent for unit price
   function drawBOMHeader(){
     setFill([10,61,143]);rect(M,y,tableW,9);
-    let tx=M; // starts at the table's left edge (not M+3) so column widths land exactly
-              // on the table's right edge with no drift — the old +3 offset was what
-              // pushed TOTAL ~1mm past the table border, clipping it.
+    let tx=M; // NOTE: tx starts at the table's left edge (not M+3) so cumulative column
+              // widths land exactly on the table's right edge (M+tableW) with no drift —
+              // a leftover +3 offset here was what pushed TOTAL ~1mm past the table border.
     cols2.forEach(c=>{
       setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
       pdf.text(c.l.toUpperCase(),c.r?tx+c.w-2:tx+2,y+5.9,{align:c.r?'right':'left'});
