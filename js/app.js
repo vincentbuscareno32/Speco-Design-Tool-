@@ -253,6 +253,47 @@ async function buildPDF(items,prog,setP){
   function recFS(x,y,w,h){pdf.rect(x,y,w,h,'FD');}
 
   function captureCanvas(cvs){try{return cvs.toDataURL('image/jpeg',0.95);}catch(e){return null;}}
+  async function captureLiveMapDom(){
+    try{
+      if(typeof html2canvas==='undefined')return null;
+      const container=document.getElementById('mapContainer');
+      if(!container||container.offsetParent===null)return null;
+      const rect=container.getBoundingClientRect();
+      if(!rect.width||!rect.height)return null;
+      const bg='#0c1018';
+      const scale=Math.min(3,Math.max(1,2000/rect.width));
+      const shot=await html2canvas(container,{useCORS:true,allowTaint:false,backgroundColor:bg,scale,logging:false});
+      if(!shot||!shot.width||!shot.height)return null;
+
+      // center-crop to the report's 182:110mm aspect ratio
+      const targetAR=182/110;
+      let sx=0,sy=0,sw=shot.width,sh=shot.height;
+      if(sw/sh>targetAR){sw=sh*targetAR;sx=(shot.width-sw)/2;}
+      else{sh=sw/targetAR;sy=(shot.height-sh)/2;}
+      const out=document.createElement('canvas');
+      out.width=Math.round(sw);out.height=Math.round(sh);
+      const octx=out.getContext('2d');
+      octx.drawImage(shot,sx,sy,sw,sh,0,0,out.width,out.height);
+
+      // sample pixels against the background color to catch blank/blocked captures
+      // (Google's map tiles are cross-origin and can silently fail to render)
+      const bgRgb={r:12,g:16,b:24};
+      const pts=[[0.1,0.1],[0.5,0.1],[0.9,0.1],[0.1,0.5],[0.5,0.5],[0.9,0.5],[0.1,0.9],[0.5,0.9],[0.9,0.9]];
+      let blankCount=0;
+      for(const[px,py]of pts){
+        const x=Math.min(out.width-1,Math.floor(px*out.width));
+        const y=Math.min(out.height-1,Math.floor(py*out.height));
+        const d=octx.getImageData(x,y,1,1).data;
+        const dist=Math.abs(d[0]-bgRgb.r)+Math.abs(d[1]-bgRgb.g)+Math.abs(d[2]-bgRgb.b);
+        if(dist<18)blankCount++;
+      }
+      if(blankCount>=pts.length-1)return null;
+
+      return out.toDataURL('image/jpeg',0.97);
+    }catch(e){
+      return null;
+    }
+  }
   async function fetchImgAsDataUrl(url){
     try{const r=await fetch(url);if(!r.ok)return null;const b=await r.blob();
       return new Promise(res=>{const fr=new FileReader();fr.onloadend=()=>res(fr.result);fr.onerror=()=>res(null);fr.readAsDataURL(b);});}
@@ -407,7 +448,10 @@ async function buildPDF(items,prog,setP){
         ctx.fillStyle=col+'cc';ctx.fillRect(pos.x-tw/2,pos.y+18,tw,13);
         ctx.fillStyle='#fff';ctx.fillText(lbl,pos.x,pos.y+19);ctx.restore();
       });
-      return{imgData:off.toDataURL('image/jpeg',0.95),w:W,h:H,type:'map',offCanvas:off};
+      const result={imgData:off.toDataURL('image/jpeg',0.95),w:W,h:H,type:'map',offCanvas:off};
+      const liveShot=await captureLiveMapDom();
+      if(liveShot)result.imgData=liveShot;
+      return result;
     }
     const srcCvs=activeTab==='emap'?document.getElementById('emapCanvas'):document.getElementById('blankCanvas');
     const W=srcCvs.width,H=srcCvs.height;
