@@ -744,49 +744,50 @@ async function buildPDF(items,prog,setP){
   y=36;
   const tableW=PW-M*2;
 
-  // ── Column definitions ──────────────────────────────────────────────────────────────────
+  // ── Column definitions (MUST sum to tableW=182 exactly — wider sums push columns off the page) ──
   const cols2=[
-    {l:'#',w:8},{l:'SKU',w:28},{l:'Description',w:88},
-    {l:'Qty',w:12,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:27,r:true}
+    {l:'#',w:8},{l:'SKU',w:22},{l:'Description',w:88},
+    {l:'Qty',w:14,r:true},{l:'MAP Unit',w:24,r:true},{l:'Total',w:26,r:true}
   ];
 
+  const PRICE_UNIT=[199,92,64]; // warm terracotta accent for unit price
   function drawBOMHeader(){
-    setFill([10,61,143]);rect(M,y,tableW,8);
+    setFill([10,61,143]);rect(M,y,tableW,9);
     let tx=M+3;
     cols2.forEach(c=>{
-      setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(6.5);
-      pdf.text(c.l.toUpperCase(),c.r?tx+c.w-1:tx+1,y+5.2,{align:c.r?'right':'left'});
+      setTxt(C.white);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
+      pdf.text(c.l.toUpperCase(),c.r?tx+c.w-2:tx+1,y+5.9,{align:c.r?'right':'left'});
       tx+=c.w;
     });
-    y+=8;
+    y+=9;
   }
   drawBOMHeader();
 
   // ── Table rows ────────────────────────────────────────────────────────────────────────
+  const rh=11;
   items.forEach((it,i)=>{
-    if(y>PH-22){
+    if(y>PH-28){
       pdf.addPage();pageNum++;
       setFill(C.white);rect(0,0,PW,PH);
       y=M;
       drawBOMHeader();
     }
-    const rh=8;
-    setFill(C.white);rect(M,y,tableW,rh);
-    setDraw([210,215,225]);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
+    if(i%2===1){setFill(C.rowAlt);rect(M,y,tableW,rh);}
+    setDraw(C.border);pdf.setLineWidth(0.15);pdf.line(M,y+rh,M+tableW,y+rh);
     let tx=M+3;
-    setTxt([150,160,175]);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
-    pdf.text(String(i+1),tx+1,y+5.5);tx+=cols2[0].w;
-    setTxt(C.blue);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text(it.product.sku,tx+1,y+5.5);tx+=cols2[1].w;
-    const desc2=it.product.description.length>72?it.product.description.substring(0,71)+'…':it.product.description;
-    setTxt([55,65,81]);pdf.setFont('helvetica','normal');pdf.setFontSize(6.5);
-    pdf.text(desc2,tx+1,y+5.2);tx+=cols2[2].w;
-    setTxt([55,65,81]);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-    pdf.text(String(it.qty),tx+cols2[3].w-1,y+5.5,{align:'right'});tx+=cols2[3].w;
-    setTxt(C.blue);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
-    pdf.text('$'+it.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[4].w-1,y+5.5,{align:'right'});tx+=cols2[4].w;
-    setTxt([10,61,143]);pdf.setFont('helvetica','bold');pdf.setFontSize(7);
-    pdf.text('$'+(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[5].w-1,y+5.5,{align:'right'});
+    setTxt(C.text3);pdf.setFont('helvetica','normal');pdf.setFontSize(7);
+    pdf.text(String(i+1),tx+1,y+7);tx+=cols2[0].w;
+    setTxt(C.navy);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);
+    pdf.text(it.product.sku,tx+1,y+7);tx+=cols2[1].w;
+    const desc2=it.product.description.length>70?it.product.description.substring(0,69)+'…':it.product.description;
+    setTxt(C.text2);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
+    pdf.text(desc2,tx+1,y+6.8);tx+=cols2[2].w;
+    setTxt(C.text1);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
+    pdf.text(String(it.qty),tx+cols2[3].w-2,y+7,{align:'right'});tx+=cols2[3].w;
+    setTxt(PRICE_UNIT);pdf.setFont('helvetica','normal');pdf.setFontSize(7.5);
+    pdf.text('$'+it.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[4].w-2,y+7,{align:'right'});tx+=cols2[4].w;
+    setTxt(C.text1);pdf.setFont('helvetica','bold');pdf.setFontSize(7.5);
+    pdf.text('$'+(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),tx+cols2[5].w-2,y+7,{align:'right'});
     y+=rh;
   });
 
