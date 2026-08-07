@@ -117,7 +117,8 @@ function setupCanvas(cvs,tipEl,sk){
   });
 }
 function showTip(pl,idx,cx,cy,tipEl,cvs){
-  tipEl.innerHTML=`<div class="tsku">${pl.product.sku}</div><div class="tdesc">${pl.product.description}</div><div class="tprice">MAP: $${pl.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><span class="tdel" onclick="removePlacement(${idx})">\u2715 Remove this placement</span>`;
+  const priceHtml=showPricing?`<div class="tprice">MAP: $${pl.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`:'';
+  tipEl.innerHTML=`<div class="tsku">${pl.product.sku}</div><div class="tdesc">${pl.product.description}</div>${priceHtml}<span class="tdel" onclick="removePlacement(${idx})">\u2715 Remove this placement</span>`;
   tipEl.style.display='block';tipEl.style.pointerEvents='none';
   const wr=cvs.closest('.cvs-wrap').getBoundingClientRect();
   let lx=cx-wr.left+14,ly=cy-wr.top-10;
@@ -139,6 +140,12 @@ setTimeout(()=>{
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────
 function toggleFov(btn){showFov=!showFov;btn.classList.toggle('on',showFov);redraw();drawMapFov();}
+function togglePricing(btn){
+  showPricing=!showPricing;
+  btn.classList.toggle('on',showPricing);
+  localStorage.setItem('specoShowPricing',showPricing);
+  renderProducts();updateBOM();
+}
 
 // ── PLACEMENT RECOVERY — call this whenever placement seems stuck ─────────
 function resetPlacementState(){
@@ -172,10 +179,14 @@ function updateBOM(){
   const badge=document.getElementById('bomBadge');
   badge.textContent=items.length;badge.style.display=items.length?'inline':'none';
   const total=items.reduce((s,it)=>s+it.product.map*it.qty,0);
-  document.getElementById('bomSum').innerHTML=items.length?`MAP total: <strong>$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`:'';
+  document.getElementById('bomSum').innerHTML=(items.length&&showPricing)?`MAP total: <strong>$${total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`:'';
   const body=document.getElementById('bomBody');
   if(!items.length){body.innerHTML='<div class="bom-empty">No products placed yet</div>';return;}
-  body.innerHTML=`<table><thead><tr><th>#</th><th>SKU</th><th>Description</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">MAP Unit</th><th style="text-align:right">MAP Total</th><th></th></tr></thead><tbody>${items.map((it,i)=>`<tr><td style="color:#8A94AA;font-size:10px">${i+1}</td><td class="tsku-cell">${it.product.sku}</td><td style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4A5568">${it.product.description}</td><td><span class="cbadge" style="background:${cc(it.product.category)}18;color:${cc(it.product.category)}">${it.product.category}</span></td><td style="text-align:center"><span class="qn">${it.qty}</span></td><td class="pcell">$${it.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="map-lbl">MAP</span></td><td class="pcell">$${(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td class="xbtn" onclick="removeSku('${it.product.sku}')">&#x2715;</td></tr>`).join('')}</tbody></table>`;
+  const priceCols=showPricing?'<th style="text-align:right">MAP Unit</th><th style="text-align:right">MAP Total</th>':'';
+  body.innerHTML=`<table><thead><tr><th>#</th><th>SKU</th><th>Description</th><th>Category</th><th style="text-align:center">Qty</th>${priceCols}<th></th></tr></thead><tbody>${items.map((it,i)=>{
+    const priceCells=showPricing?`<td class="pcell">$${it.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}<span class="map-lbl">MAP</span></td><td class="pcell">$${(it.product.map*it.qty).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`:'';
+    return `<tr><td style="color:#8A94AA;font-size:10px">${i+1}</td><td class="tsku-cell">${it.product.sku}</td><td style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4A5568">${it.product.description}</td><td><span class="cbadge" style="background:${cc(it.product.category)}18;color:${cc(it.product.category)}">${it.product.category}</span></td><td style="text-align:center"><span class="qn">${it.qty}</span></td>${priceCells}<td class="xbtn" onclick="removeSku('${it.product.sku}')">&#x2715;</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 function adjQty(sku,d){
   if(d>0){const s=placements.find(p=>p.product.sku===sku);if(s)placements.push({...s,x:s.x+(Math.random()-.5)*40,y:s.y+(Math.random()-.5)*40});}
@@ -854,3 +865,4 @@ async function buildPDF(items,prog,setP,includePricing=true){
 }
 
 renderProducts();
+document.getElementById('btnPricing').classList.toggle('on',showPricing);

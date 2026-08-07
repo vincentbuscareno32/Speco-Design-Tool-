@@ -4,6 +4,7 @@ function metersPerPixel(lat,zoom){return 156543.03392*Math.cos(lat*Math.PI/180)/
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let activeCat='All',selProd=null,showFov=true,placements=[],recentSkus=[];
+let showPricing=localStorage.getItem('specoShowPricing')!=='false'; // default on
 let activeTab='blank',emapImg=null;
 let dragIdx=-1,dragOX=0,dragOY=0,dragMoved=false;
 let tipTimer=null,googleMapObj=null,mapsACInit=false;
@@ -15,7 +16,8 @@ const CS={blank:{w:0,h:0},emap:{w:0,h:0}};
 function makePItem(p){
   const d=document.createElement('div');
   d.className='pitem'+(selProd&&selProd.sku===p.sku?' sel':'');
-  d.innerHTML=`<div class="psku"><span class="cdot" style="background:${cc(p.category)}"></span>${p.sku}</div><div class="pdesc">${p.description}</div><div class="pprice">MAP $${p.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+  const priceHtml=showPricing?`<div class="pprice">MAP $${p.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`:'';
+  d.innerHTML=`<div class="psku"><span class="cdot" style="background:${cc(p.category)}"></span>${p.sku}</div><div class="pdesc">${p.description}</div>${priceHtml}`;
   d.onclick=()=>pickProd(p);
   return d;
 }
