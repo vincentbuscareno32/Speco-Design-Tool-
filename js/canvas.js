@@ -167,9 +167,9 @@ const CAT_ICONS={
 function catIcon(c){return CAT_ICONS[c]||CAT_ICONS['Accessories'];}
 const iconCache={};
 function getIconImg(cat,col,size,cb){
-  const key=cat+size;
+  const key=cat+size+col;
   if(iconCache[key]){cb(iconCache[key]);return;}
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${catIcon(cat)}</svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${catIcon(cat)}</svg>`;
   const img=new Image();
   img.onload=()=>{iconCache[key]=img;cb(img);};
   img.src='data:image/svg+xml;base64,'+btoa(svg);
@@ -185,28 +185,29 @@ function drawPlacements(ctx){
   // Draw icons on top
   placements.forEach((pl,i)=>{
     const c=cc(pl.product.category);
+    const r=8; // outline ring — was a 15px solid filled badge, now a lightweight 16px ring
     ctx.save();
-    ctx.shadowColor='rgba(0,0,0,0.22)';ctx.shadowBlur=6;ctx.shadowOffsetY=2;
-    ctx.beginPath();ctx.arc(pl.x,pl.y,15,0,Math.PI*2);
-    ctx.fillStyle=c;ctx.fill();
-    ctx.shadowColor='transparent';
-    ctx.strokeStyle='rgba(255,255,255,0.9)';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(pl.x,pl.y,r,0,Math.PI*2);
+    ctx.fillStyle='rgba(13,17,23,0.78)';ctx.fill();
+    ctx.strokeStyle=c;ctx.lineWidth=1.75;ctx.stroke();
     ctx.restore();
-    getIconImg(pl.product.category,c,22,(img)=>{
-      ctx.save();ctx.drawImage(img,pl.x-11,pl.y-11,22,22);ctx.restore();
+    const iconSize=12;
+    getIconImg(pl.product.category,c,iconSize,(img)=>{
+      ctx.save();ctx.drawImage(img,pl.x-iconSize/2,pl.y-iconSize/2,iconSize,iconSize);ctx.restore();
       ctx.save();
-      ctx.beginPath();ctx.arc(pl.x+11,pl.y-11,7,0,Math.PI*2);
-      ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.stroke();
-      ctx.fillStyle=c;ctx.font='bold 8px "DM Mono",monospace';
+      const bx=pl.x+6,by=pl.y-6,br=4.5;
+      ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);
+      ctx.fillStyle='#0d1117';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=c;ctx.font='bold 6.5px "DM Mono",monospace';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(i+1,pl.x+11,pl.y-11);
+      ctx.fillText(i+1,bx,by+0.5);
       ctx.restore();
     });
     ctx.save();
     ctx.font='bold 9px "Barlow Condensed",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillStyle='rgba(255,255,255,0.55)';
     const lbl=pl.product.sku.length>8?pl.product.sku.substring(0,7)+'\u2026':pl.product.sku;
-    ctx.fillText(lbl,pl.x,pl.y+18);
+    ctx.fillText(lbl,pl.x,pl.y+r+3);
     ctx.restore();
   });
 }
