@@ -82,48 +82,66 @@ function drawMapFov(){
     const eSpecs=getEffectiveSpecs({product:m.product,angle,fovRangeMult:mult,zoomPos:m.zoomPos||0});
     if(!eSpecs)return;
     const custom=m.customCone;
-    const halfA=custom?custom.halfAngleDeg*Math.PI/180:eSpecs.fovDeg/2*Math.PI/180;
-    const doriM=eSpecs.dori||{};
-    // Draw DORI zones (real-world scale in meters)
-    for(const zone of['detection','observation','recognition','identification']){
-      const ft=(doriM[zone]||0)*mult;
-      if(!ft)continue;
-      const rP=Math.min(ftToM(ft)/mpp,600);
+    let halfA,rangeP;
+
+    if(custom){
+      // Simplified single-cone view — no DORI tier breakdown/footage labels, since a
+      // customized cone is a presentation aid, not measured coverage.
+      halfA=custom.halfAngleDeg*Math.PI/180;
+      rangeP=Math.min(ftToM(custom.rangeFt)/mpp,600);
       ctx.save();
-      if(custom)ctx.setLineDash([5,4]);
-      ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
-      ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
-      ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();
+      ctx.setLineDash([6,4]);
+      ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rangeP,angle-halfA,angle+halfA);ctx.closePath();
+      ctx.fillStyle='rgba(251,146,60,0.16)';ctx.fill();
+      ctx.strokeStyle='#fb923c';ctx.lineWidth=1.75;ctx.stroke();
       ctx.restore();
-      ctx.save();ctx.font='bold 10px sans-serif';ctx.fillStyle=DORI_STROKES[zone];
+      ctx.save();
+      ctx.font='bold 11px sans-serif';ctx.fillStyle='#fb923c';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(Math.round(ft)+'ft',pos.x+Math.cos(angle)*rP*0.72,pos.y+Math.sin(angle)*rP*0.72);
+      ctx.fillText(Math.round(custom.halfAngleDeg*2)+'\u00b0  \u26a0 CUSTOM',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);
+      ctx.restore();
+    } else {
+      halfA=eSpecs.fovDeg/2*Math.PI/180;
+      const doriM=eSpecs.dori||{};
+      for(const zone of['detection','observation','recognition','identification']){
+        const ft=(doriM[zone]||0)*mult;
+        if(!ft)continue;
+        const rP=Math.min(ftToM(ft)/mpp,600);
+        ctx.save();
+        ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
+        ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
+        ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();
+        ctx.restore();
+        ctx.save();ctx.font='bold 10px sans-serif';ctx.fillStyle=DORI_STROKES[zone];
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(Math.round(ft)+'ft',pos.x+Math.cos(angle)*rP*0.72,pos.y+Math.sin(angle)*rP*0.72);
+        ctx.restore();
+      }
+      const detFtM=(doriM.detection||eSpecs.irFt||100)*mult;
+      rangeP=Math.min(ftToM(detFtM)/mpp,600);
+      ctx.save();
+      ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=col;
+      ctx.fillText(eSpecs.fovDeg+'\u00b0 \u00b7 '+Math.round(detFtM)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);
       ctx.restore();
     }
-    const detFtM=(doriM.detection||eSpecs.irFt||100)*mult;
-    const rangeP=Math.min(ftToM(detFtM)/mpp,600);
+
     const hx=pos.x+Math.cos(angle)*rangeP;
     const hy=pos.y+Math.sin(angle)*rangeP;
-    // Outer label
-    ctx.save();
-    ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle=custom?'#fb923c':col;
-    const outerLblM=(custom?Math.round(custom.halfAngleDeg*2):eSpecs.fovDeg)+'\u00b0 \u00b7 '+Math.round(detFtM)+'ft'+(custom?'  \u26a0 CUSTOM':'');
-    ctx.fillText(outerLblM,pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);
-    ctx.restore();
+    const hCol=custom?'#fb923c':col;
     // Rotation handle
     ctx.save();
-    ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
-    ctx.font='bold 13px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=hCol;ctx.lineWidth=2;ctx.stroke();
+    ctx.font='bold 13px sans-serif';ctx.fillStyle=hCol;ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('\u27f3',hx,hy+1);
     ctx.restore();
     // Person range handle
     const ppx=pos.x+Math.cos(angle)*(rangeP+30);
     const ppy=pos.y+Math.sin(angle)*(rangeP+30);
     ctx.save();
-    ctx.setLineDash([3,3]);ctx.strokeStyle=col+'77';ctx.lineWidth=1.5;
+    ctx.setLineDash([3,3]);ctx.strokeStyle=hCol+'77';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(hx+Math.cos(angle)*9,hy+Math.sin(angle)*9);ctx.lineTo(ppx-Math.cos(angle)*8,ppy-Math.sin(angle)*8);ctx.stroke();
-    ctx.setLineDash([]);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.fillStyle='#fff';
+    ctx.setLineDash([]);ctx.strokeStyle=hCol;ctx.lineWidth=2;ctx.fillStyle='#fff';
     ctx.save();ctx.translate(ppx,ppy);ctx.rotate(angle+Math.PI/2);
     ctx.beginPath();ctx.arc(0,-6,6,0,Math.PI*2);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,10);ctx.stroke();
@@ -163,7 +181,7 @@ function drawMapFov(){
       ctx.fillText(mmLbl,lx,ly+1);
       ctx.restore();
     }
-    // Store both handle positions
+    // Store handle positions
     m._fovHandle={x:hx,y:hy};
     m._fovPersonHandle={x:ppx,y:ppy};
     if(customFovMode){
@@ -331,32 +349,41 @@ _overlay.addEventListener('mousemove',e=>{
       if(mapFovDragType==='rotate'){
         m.fovAngle=Math.atan2(my-pos.y,mx-pos.x);
       } else if(mapFovDragType==='width'){
+        const specsW=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
+        const ccW=ensureCustomCone(m,specsW);
         const angle=m.fovAngle||0;
         const rawAngle=Math.atan2(my-pos.y,mx-pos.x);
         let diff=rawAngle-angle;
         while(diff>Math.PI)diff-=2*Math.PI;
         while(diff<-Math.PI)diff+=2*Math.PI;
-        const halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
-        m.customCone={halfAngleDeg};
+        ccW.halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
       } else {
         const dist=Math.hypot(mx-pos.x,my-pos.y);
-        const eSpecs2=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
-        if(eSpecs2&&eSpecs2.isMotorized){
-          const lat=googleMapObj.getCenter().lat();
-          const zoom=googleMapObj.getZoom();
-          const mpp=metersPerPixel(lat,zoom);
-          const distFt=mToFt(dist*mpp);
-          m.zoomPos=zoomPosForRangeFt(eSpecs2,distFt);
-          m._zoomDragActive=true;
+        const lat=googleMapObj.getCenter().lat();
+        const zoom=googleMapObj.getZoom();
+        const mpp=metersPerPixel(lat,zoom);
+        const distFt=mToFt(dist*mpp);
+        if(m.customCone){
+          // Already customized — range handle keeps editing the custom length.
+          m.customCone.rangeFt=Math.max(10,Math.min(distFt,200));
+        } else if(customFovMode){
+          // Custom FOV mode is on but this cone hasn't been touched yet — start a full
+          // custom cone from the range drag, even for a fixed, non-motorized lens.
+          const specsR=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
+          const ccR=ensureCustomCone(m,specsR);
+          ccR.rangeFt=Math.max(10,Math.min(distFt,200));
         } else {
-          const specs3=parseCameraSpecs(m.product);
-          const lat=googleMapObj.getCenter().lat();
-          const zoom=googleMapObj.getZoom();
-          const mpp=metersPerPixel(lat,zoom);
-          const dori3=specs3&&specs3.dori?specs3.dori:{};
-          const detFt3=dori3.detection||specs3&&specs3.irFt||100;
-          const base=ftToM(detFt3)/mpp;
-          m.fovRangeMult=Math.max(0.1,Math.min(dist/base,1.0));
+          const eSpecs2=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
+          if(eSpecs2&&eSpecs2.isMotorized){
+            m.zoomPos=zoomPosForRangeFt(eSpecs2,distFt);
+            m._zoomDragActive=true;
+          } else {
+            const specs3=parseCameraSpecs(m.product);
+            const dori3=specs3&&specs3.dori?specs3.dori:{};
+            const detFt3=dori3.detection||specs3&&specs3.irFt||100;
+            const base=ftToM(detFt3)/mpp;
+            m.fovRangeMult=Math.max(0.1,Math.min(dist/base,1.0));
+          }
         }
       }
       drawMapFov();

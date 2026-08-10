@@ -44,16 +44,56 @@ function getFovFeet(pl){
   return Math.round(detFt*(pl.fovRangeMult||1.0));
 }
 
+// Custom FOV cones store their own range in feet, independent of any real DORI data —
+// once a cone is customized it's a presentation aid, not a measurement, so its length
+// no longer needs to derive from (or be capped by) the camera's actual specs.
+function ensureCustomCone(pl,specs){
+  if(!pl.customCone){
+    const detFt=(specs&&specs.dori&&specs.dori.detection)||(specs&&specs.irFt)||100;
+    pl.customCone={halfAngleDeg:specs?specs.fovDeg/2:35,rangeFt:detFt};
+  }
+  return pl.customCone;
+}
+
 function drawFovCone(ctx,pl){
   const specs=getEffectiveSpecs(pl);
   if(!specs)return;
-  const custom=pl.customCone; // presence = this cone's angle has been manually overridden
-  const halfA=custom?custom.halfAngleDeg*Math.PI/180:specs.fovDeg/2*Math.PI/180;
+  const custom=pl.customCone;
   const angle=pl.angle||0;
   const col=cc(pl.product.category);
+  const pxPerFt=2.5;
+
+  if(custom){
+    // Simplified single-cone view. A customized cone is explicitly not measured
+    // coverage, so it deliberately skips the DORI tier breakdown and footage labels
+    // that would otherwise imply a precision this shape no longer has — it's here to
+    // show orientation/intent only, e.g. "this camera covers the loading dock."
+    const halfA=custom.halfAngleDeg*Math.PI/180;
+    const outerR=Math.min(custom.rangeFt*pxPerFt,500);
+    ctx.save();
+    ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(pl.x,pl.y);
+    ctx.arc(pl.x,pl.y,outerR,angle-halfA,angle+halfA);ctx.closePath();
+    ctx.fillStyle='rgba(251,146,60,0.16)';
+    ctx.fill();
+    ctx.strokeStyle='#fb923c';ctx.lineWidth=1.75;ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.font='bold 10px sans-serif';ctx.fillStyle='#fb923c';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(Math.round(custom.halfAngleDeg*2)+'\u00b0  \u26a0 CUSTOM',
+      pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-12);
+    ctx.restore();
+
+    drawFovHandles(ctx,pl,angle,outerR,halfA,col,true,specs);
+    return;
+  }
+
+  // ── Accurate cone (default) ─────────────────────────────────────────────────────────
+  const halfA=specs.fovDeg/2*Math.PI/180;
   const mult=pl.fovRangeMult||1.0;
   const dori=specs.dori||{};
-  const pxPerFt=2.5;
 
   // Draw DORI zones outermost to innermost
   for(const zone of['detection','observation','recognition','identification']){
@@ -61,7 +101,6 @@ function drawFovCone(ctx,pl){
     if(!ft)continue;
     const r=Math.min(ft*pxPerFt,500);
     ctx.save();
-    if(custom)ctx.setLineDash([5,4]); // dashed = manually adjusted, not the camera's real coverage
     ctx.beginPath();ctx.moveTo(pl.x,pl.y);
     ctx.arc(pl.x,pl.y,r,angle-halfA,angle+halfA);ctx.closePath();
     ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
@@ -82,19 +121,23 @@ function drawFovCone(ctx,pl){
   ctx.save();
   ctx.font='bold 10px sans-serif';ctx.fillStyle=col;
   ctx.textAlign='center';ctx.textBaseline='middle';
-  const outerLbl=(custom?Math.round(custom.halfAngleDeg*2):specs.fovDeg)+'\u00b0 \u00b7 '+Math.round(detFt)+'ft'+(custom?'  \u26a0 CUSTOM':'');
-  ctx.fillStyle=custom?'#fb923c':col;
-  ctx.fillText(outerLbl,
+  ctx.fillText(specs.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',
     pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-12);
   ctx.restore();
 
+  drawFovHandles(ctx,pl,angle,outerR,halfA,col,false,specs);
+}
+
+// Shared handle drawing for both accurate and custom cones — rotate + range handles are
+// always shown; the width handle only appears in Custom FOV edit mode.
+function drawFovHandles(ctx,pl,angle,outerR,halfA,col,isCustom,specs){
   // Rotation handle \u27f3 at detection range tip
   const hx=pl.x+Math.cos(angle)*outerR;
   const hy=pl.y+Math.sin(angle)*outerR;
   ctx.save();
   ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);
-  ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
-  ctx.font='bold 13px sans-serif';ctx.fillStyle=col;
+  ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=isCustom?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
+  ctx.font='bold 13px sans-serif';ctx.fillStyle=isCustom?'#fb923c':col;
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);
   ctx.restore();
 
@@ -116,14 +159,17 @@ function drawFovCone(ctx,pl){
     ctx.restore();
   }
 
-  // Person range handle beyond tip
+  // Person range handle beyond tip — always visible. Behavior depends on state (see
+  // the mousemove handler in app.js): free-length drag for customized cones or while
+  // in Custom FOV mode, motorized zoom control, or fixed-lens calibration otherwise.
   const ppx=pl.x+Math.cos(angle)*(outerR+28);
   const ppy=pl.y+Math.sin(angle)*(outerR+28);
+  const hCol=isCustom?'#fb923c':col;
   ctx.save();
-  ctx.setLineDash([3,3]);ctx.strokeStyle=col+'77';ctx.lineWidth=1.5;
+  ctx.setLineDash([3,3]);ctx.strokeStyle=hCol+'77';ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(hx+Math.cos(angle)*9,hy+Math.sin(angle)*9);
   ctx.lineTo(ppx-Math.cos(angle)*6,ppy-Math.sin(angle)*6);ctx.stroke();
-  ctx.setLineDash([]);ctx.strokeStyle=col;ctx.lineWidth=2;ctx.fillStyle='#fff';
+  ctx.setLineDash([]);ctx.strokeStyle=hCol;ctx.lineWidth=2;ctx.fillStyle='#fff';
   ctx.save();ctx.translate(ppx,ppy);ctx.rotate(angle+Math.PI/2);
   ctx.beginPath();ctx.arc(0,-6,6,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,10);ctx.stroke();
@@ -150,19 +196,26 @@ function drawFovCone(ctx,pl){
   }
 }
 
-// Returns {idx, type:'rotate'|'range'} or null
+// Returns {idx, type:'rotate'|'range'|'width'} or null
 function getFovHandleHit(x,y){
   if(!showFov)return null;
   for(let i=0;i<placements.length;i++){
     const pl=placements[i];
     if(pl.product.category!=='Cameras')continue;
     const specs=getEffectiveSpecs(pl);if(!specs)continue;
-    const dori=specs.dori||{};
-    const mult=pl.fovRangeMult||1.0;
-    const detFt=(dori.detection||specs.irFt||100)*mult;
-    const outerR=Math.min(detFt*2.5,500);
+    const custom=pl.customCone;
     const angle=pl.angle||0;
-    const halfA=pl.customCone?pl.customCone.halfAngleDeg*Math.PI/180:specs.fovDeg/2*Math.PI/180;
+    let outerR,halfA;
+    if(custom){
+      halfA=custom.halfAngleDeg*Math.PI/180;
+      outerR=Math.min(custom.rangeFt*2.5,500);
+    } else {
+      const dori=specs.dori||{};
+      const mult=pl.fovRangeMult||1.0;
+      const detFt=(dori.detection||specs.irFt||100)*mult;
+      outerR=Math.min(detFt*2.5,500);
+      halfA=specs.fovDeg/2*Math.PI/180;
+    }
     const hx=pl.x+Math.cos(angle)*outerR;
     const hy=pl.y+Math.sin(angle)*outerR;
     const ppx=pl.x+Math.cos(angle)*(outerR+28);

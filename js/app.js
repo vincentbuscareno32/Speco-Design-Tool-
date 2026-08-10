@@ -48,28 +48,43 @@ function setupCanvas(cvs,tipEl,sk){
           // Custom FOV mode: reshape the cone's visual angle only. This never touches
           // specs.fovDeg or the DORI numbers — it's a separate cosmetic override,
           // rendered dashed, that the BOM/export accuracy warning is built around.
+          const specs=getEffectiveSpecs(pl);
+          const cc=ensureCustomCone(pl,specs);
           const angle=pl.angle||0;
           const rawAngle=Math.atan2(y-pl.y,x-pl.x);
           let diff=rawAngle-angle;
           while(diff>Math.PI)diff-=2*Math.PI;
           while(diff<-Math.PI)diff+=2*Math.PI;
-          const halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
-          pl.customCone={halfAngleDeg};
+          cc.halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
         } else {
           const dist=Math.hypot(x-pl.x,y-pl.y);
-          const specs=getEffectiveSpecs(pl);
-          if(specs&&specs.isMotorized){
-            // Dragging the range handle IS the zoom control for motorized lenses —
-            // solve for the focal length that produces this exact range, rather than
-            // stacking a separate multiplier on top (that would double-count the zoom).
-            const distFt=dist/2.5;
-            pl.zoomPos=zoomPosForRangeFt(specs,distFt);
-            pl._zoomDragActive=true;
+          const distFt=dist/2.5;
+          if(pl.customCone){
+            // Already customized — the range handle keeps editing the custom length
+            // (regardless of whether edit mode is currently toggled on), same as any
+            // other always-visible handle would.
+            pl.customCone.rangeFt=Math.max(10,Math.min(distFt,200));
+          } else if(customFovMode){
+            // Custom FOV mode is on but this cone hasn't been touched yet — dragging
+            // the range handle here starts a full custom cone (length AND, once the
+            // width handle is used, angle), even for a fixed, non-motorized lens.
+            const specs=getEffectiveSpecs(pl);
+            const cc=ensureCustomCone(pl,specs);
+            cc.rangeFt=Math.max(10,Math.min(distFt,200));
           } else {
-            const dori=specs&&specs.dori?specs.dori:{};
-            const detFt=(dori.detection||specs&&specs.irFt||100);
-            const basePixels=detFt*2.5;
-            pl.fovRangeMult=Math.max(0.1,Math.min(dist/basePixels,1.0));
+            const specs=getEffectiveSpecs(pl);
+            if(specs&&specs.isMotorized){
+              // Dragging the range handle IS the zoom control for motorized lenses —
+              // solve for the focal length that produces this exact range, rather than
+              // stacking a separate multiplier on top (that would double-count the zoom).
+              pl.zoomPos=zoomPosForRangeFt(specs,distFt);
+              pl._zoomDragActive=true;
+            } else {
+              const dori=specs&&specs.dori?specs.dori:{};
+              const detFt=(dori.detection||specs&&specs.irFt||100);
+              const basePixels=detFt*2.5;
+              pl.fovRangeMult=Math.max(0.1,Math.min(dist/basePixels,1.0));
+            }
           }
         }
         redraw();
@@ -533,27 +548,38 @@ async function buildPDF(items,prog,setP,includePricing=true){
           const eS=getEffectiveSpecs({product:m.product,angle,fovRangeMult:mult,zoomPos:m.zoomPos||0});
           if(!eS)return;
           const customM=m.customCone;
-          const halfA=customM?customM.halfAngleDeg*Math.PI/180:eS.fovDeg/2*Math.PI/180;
-          const dZ=eS.dori||{};
-          for(const zone of['detection','observation','recognition','identification']){
-            const ft=(dZ[zone]||0)*mult;if(!ft)continue;
-            const rP=Math.min(ftToM(ft)/mpp,500);
-            ctx.save();
-            if(customM)ctx.setLineDash([5,4]);
-            ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
-            ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
-            ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
-            ctx.save();ctx.font='bold 10px sans-serif';ctx.fillStyle=DORI_STROKES[zone];
-            ctx.textAlign='center';ctx.textBaseline='middle';
-            ctx.fillText(Math.round(ft)+'ft',pos.x+Math.cos(angle)*rP*0.72,pos.y+Math.sin(angle)*rP*0.72);ctx.restore();
+          let halfA,rangeP;
+          if(customM){
+            halfA=customM.halfAngleDeg*Math.PI/180;
+            rangeP=Math.min(ftToM(customM.rangeFt)/mpp,500);
+            ctx.save();ctx.setLineDash([6,4]);
+            ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rangeP,angle-halfA,angle+halfA);ctx.closePath();
+            ctx.fillStyle='rgba(251,146,60,0.16)';ctx.fill();
+            ctx.strokeStyle='#fb923c';ctx.lineWidth=1.75;ctx.stroke();ctx.restore();
+            ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle='#fb923c';ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.fillText(Math.round(customM.halfAngleDeg*2)+'\u00b0  \u26a0 CUSTOM',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);ctx.restore();
+          } else {
+            halfA=eS.fovDeg/2*Math.PI/180;
+            const dZ=eS.dori||{};
+            for(const zone of['detection','observation','recognition','identification']){
+              const ft=(dZ[zone]||0)*mult;if(!ft)continue;
+              const rP=Math.min(ftToM(ft)/mpp,500);
+              ctx.save();
+              ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
+              ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
+              ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+              ctx.save();ctx.font='bold 10px sans-serif';ctx.fillStyle=DORI_STROKES[zone];
+              ctx.textAlign='center';ctx.textBaseline='middle';
+              ctx.fillText(Math.round(ft)+'ft',pos.x+Math.cos(angle)*rP*0.72,pos.y+Math.sin(angle)*rP*0.72);ctx.restore();
+            }
+            const detFt=(dZ.detection||eS.irFt||100)*mult;
+            rangeP=Math.min(ftToM(detFt)/mpp,500);
+            ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.fillText(eS.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);ctx.restore();
           }
-          const detFt=(dZ.detection||eS.irFt||100)*mult;
-          const rangeP=Math.min(ftToM(detFt)/mpp,500);
           const hx=pos.x+Math.cos(angle)*rangeP,hy=pos.y+Math.sin(angle)*rangeP;
-          ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
-          ctx.fillText(eS.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);ctx.restore();
-          ctx.save();ctx.beginPath();ctx.arc(hx,hy,8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
-          ctx.fillStyle=col;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
+          ctx.save();ctx.beginPath();ctx.arc(hx,hy,8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=customM?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
+          ctx.fillStyle=customM?'#fb923c':col;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
         });
       }
       mapMarkers.forEach((m,i)=>{
@@ -597,27 +623,39 @@ async function buildPDF(items,prog,setP,includePricing=true){
         if(pl.product.category!=='Cameras')return;
         const eSpecs2=getEffectiveSpecs(pl);if(!eSpecs2)return;
         const custom2=pl.customCone;
-        const halfA2=custom2?custom2.halfAngleDeg*Math.PI/180:eSpecs2.fovDeg/2*Math.PI/180;
         const angle=pl.angle||0;const col=cc(pl.product.category);
-        const mult2=pl.fovRangeMult||1.0;const dori2=eSpecs2.dori||{};const pxPerFt=2.5;
-        for(const zone of['detection','observation','recognition','identification']){
-          const ft=(dori2[zone]||0)*mult2;if(!ft)continue;
-          const r=Math.min(ft*pxPerFt,500);
-          ctx.save();
-          if(custom2)ctx.setLineDash([5,4]);
-          ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,r,angle-halfA2,angle+halfA2);ctx.closePath();
-          ctx.fillStyle=DORI_COLORS[zone];ctx.fill();ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
-          ctx.save();ctx.font='bold 9px sans-serif';ctx.fillStyle=DORI_STROKES[zone];ctx.textAlign='center';ctx.textBaseline='middle';
-          ctx.fillText(Math.round(ft)+'ft',pl.x+Math.cos(angle)*r*0.75,pl.y+Math.sin(angle)*r*0.75);ctx.restore();
+        const pxPerFt=2.5;
+        let halfA2,outerR;
+        if(custom2){
+          halfA2=custom2.halfAngleDeg*Math.PI/180;
+          outerR=Math.min(custom2.rangeFt*pxPerFt,500);
+          ctx.save();ctx.setLineDash([6,4]);
+          ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,outerR,angle-halfA2,angle+halfA2);ctx.closePath();
+          ctx.fillStyle='rgba(251,146,60,0.16)';ctx.fill();
+          ctx.strokeStyle='#fb923c';ctx.lineWidth=1.75;ctx.stroke();ctx.restore();
+          ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle='#fb923c';ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.fillText(Math.round(custom2.halfAngleDeg*2)+'\u00b0  \u26a0 CUSTOM',pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-10);ctx.restore();
+        } else {
+          halfA2=eSpecs2.fovDeg/2*Math.PI/180;
+          const mult2=pl.fovRangeMult||1.0;const dori2=eSpecs2.dori||{};
+          for(const zone of['detection','observation','recognition','identification']){
+            const ft=(dori2[zone]||0)*mult2;if(!ft)continue;
+            const r=Math.min(ft*pxPerFt,500);
+            ctx.save();
+            ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,r,angle-halfA2,angle+halfA2);ctx.closePath();
+            ctx.fillStyle=DORI_COLORS[zone];ctx.fill();ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
+            ctx.save();ctx.font='bold 9px sans-serif';ctx.fillStyle=DORI_STROKES[zone];ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.fillText(Math.round(ft)+'ft',pl.x+Math.cos(angle)*r*0.75,pl.y+Math.sin(angle)*r*0.75);ctx.restore();
+          }
+          const detFt2=(dori2.detection||eSpecs2.irFt||100)*mult2;
+          outerR=Math.min(detFt2*pxPerFt,500);
+          ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.fillText(eSpecs2.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt2)+'ft',pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-10);ctx.restore();
         }
-        const detFt2=(dori2.detection||eSpecs2.irFt||100)*mult2;
-        const outerR=Math.min(detFt2*pxPerFt,500);
         const hx=pl.x+Math.cos(angle)*outerR,hy=pl.y+Math.sin(angle)*outerR;
-        ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(eSpecs2.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt2)+'ft',pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-10);ctx.restore();
         ctx.save();ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);
-        ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
-        ctx.fillStyle=col;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
+        ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=custom2?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
+        ctx.fillStyle=custom2?'#fb923c':col;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
       });
     }
     placements.forEach((pl,i)=>{
