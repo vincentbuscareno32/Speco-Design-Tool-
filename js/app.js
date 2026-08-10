@@ -44,6 +44,17 @@ function setupCanvas(cvs,tipEl,sk){
       if(pl){
         if(fovDragging.type==='rotate'){
           pl.angle=Math.atan2(y-pl.y,x-pl.x);
+        } else if(fovDragging.type==='width'){
+          // Custom FOV mode: reshape the cone's visual angle only. This never touches
+          // specs.fovDeg or the DORI numbers — it's a separate cosmetic override,
+          // rendered dashed, that the BOM/export accuracy warning is built around.
+          const angle=pl.angle||0;
+          const rawAngle=Math.atan2(y-pl.y,x-pl.x);
+          let diff=rawAngle-angle;
+          while(diff>Math.PI)diff-=2*Math.PI;
+          while(diff<-Math.PI)diff+=2*Math.PI;
+          const halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
+          pl.customCone={halfAngleDeg};
         } else {
           const dist=Math.hypot(x-pl.x,y-pl.y);
           const specs=getEffectiveSpecs(pl);
@@ -118,7 +129,8 @@ function setupCanvas(cvs,tipEl,sk){
 }
 function showTip(pl,idx,cx,cy,tipEl,cvs){
   const priceHtml=showPricing?`<div class="tprice">MAP: $${pl.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`:'';
-  tipEl.innerHTML=`<div class="tsku">${pl.product.sku}</div><div class="tdesc">${pl.product.description}</div>${priceHtml}<span class="tdel" onclick="removePlacement(${idx})">\u2715 Remove this placement</span>`;
+  const resetHtml=pl.customCone?`<span class="tdel" style="color:#fb923c" onclick="resetCustomCone(${idx})">\u21ba Reset to accurate FOV</span>`:'';
+  tipEl.innerHTML=`<div class="tsku">${pl.product.sku}</div><div class="tdesc">${pl.product.description}</div>${priceHtml}${resetHtml}<span class="tdel" onclick="removePlacement(${idx})">\u2715 Remove this placement</span>`;
   tipEl.style.display='block';tipEl.style.pointerEvents='none';
   const wr=cvs.closest('.cvs-wrap').getBoundingClientRect();
   let lx=cx-wr.left+14,ly=cy-wr.top-10;
@@ -139,12 +151,58 @@ setTimeout(()=>{
 },300);
 
 // ── CONTROLS ──────────────────────────────────────────────────────────────
+function resetCustomCone(idx){
+  const pl=placements[idx];
+  if(pl){delete pl.customCone;redraw();}
+}
+function resetMapCustomCone(idx){
+  const m=mapMarkers[idx];
+  if(m){delete m.customCone;hideAllMapTips();drawMapFov();}
+}
 function toggleFov(btn){showFov=!showFov;btn.classList.toggle('on',showFov);redraw();drawMapFov();}
 function togglePricing(btn){
   showPricing=!showPricing;
   btn.classList.toggle('on',showPricing);
   localStorage.setItem('specoShowPricing',showPricing);
   renderProducts();updateBOM();
+}
+
+function toggleCustomFov(btn){
+  if(customFovMode){
+    // Turning off never needs a warning — any cones already customized keep their
+    // shape and dashed styling, this just hides the extra drag handles.
+    customFovMode=false;
+    btn.classList.remove('on');
+    redraw();drawMapFov();
+    return;
+  }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:"Inter",sans-serif;';
+  ov.innerHTML=`
+    <div style="background:#131920;border:1px solid #1e2736;border-radius:12px;padding:26px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#fb923c;margin-bottom:8px;">Custom FOV Mode</div>
+      <div style="font-size:12.5px;line-height:1.6;color:#8899aa;margin-bottom:20px;">
+        This lets you manually widen, narrow, or reshape a camera's FOV cone for presentation purposes — for example, to avoid overlapping cones when explaining coverage to a customer.
+        <br><br>
+        <strong style="color:#e2e8f0;">Once adjusted, a cone no longer reflects this camera's real, calculated field of view.</strong> Adjusted cones are shown with a dashed outline so they're never mistaken for accurate coverage. The underlying DORI data used for your BOM is never changed.
+      </div>
+      <button id="cfConfirm" style="width:100%;padding:11px;margin-bottom:8px;border:none;border-radius:8px;background:#fb923c;color:#1a1204;font-weight:600;font-size:13px;cursor:pointer;">I understand, enable Custom FOV</button>
+      <button id="cfCancel" style="width:100%;padding:9px;border:none;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;">Cancel</button>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('cfCancel').onclick=()=>ov.remove();
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.getElementById('cfConfirm').onclick=()=>{
+    ov.remove();
+    customFovMode=true;
+    btn.classList.add('on');
+    redraw();drawMapFov();
+  };
+}
+
+// True if any placement (canvas tabs or maps tab) currently has a manually-adjusted cone
+function hasCustomCones(){
+  return placements.some(pl=>pl.customCone)||mapMarkers.some(m=>m.customCone);
 }
 
 // ── PLACEMENT RECOVERY — call this whenever placement seems stuck ─────────
@@ -203,6 +261,27 @@ function removeSku(sku){
 // ── EXPORT ────────────────────────────────────────────────────────────────
 function promptExportPricing(){
   if(!placements.length&&!mapMarkers.length){alert('No products placed yet.');return;}
+  if(hasCustomCones()){
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:"Inter",sans-serif;';
+    ov.innerHTML=`
+      <div style="background:#131920;border:1px solid #1e2736;border-radius:12px;padding:26px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#fb923c;margin-bottom:8px;">Non-accurate FOV in this export</div>
+        <div style="font-size:12.5px;line-height:1.6;color:#8899aa;margin-bottom:20px;">
+          One or more camera cones have been manually adjusted and may not reflect this camera's true field of view. Do you want to continue exporting?
+        </div>
+        <button id="cfExpContinue" style="width:100%;padding:11px;margin-bottom:8px;border:none;border-radius:8px;background:#fb923c;color:#1a1204;font-weight:600;font-size:13px;cursor:pointer;">Continue export</button>
+        <button id="cfExpCancel" style="width:100%;padding:9px;border:1.5px solid #2a3345;border-radius:8px;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;">Cancel</button>
+      </div>`;
+    document.body.appendChild(ov);
+    document.getElementById('cfExpCancel').onclick=()=>ov.remove();
+    ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+    document.getElementById('cfExpContinue').onclick=()=>{ov.remove();promptExportPricing._proceed();};
+    return;
+  }
+  promptExportPricing._proceed();
+}
+promptExportPricing._proceed=function(){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:"Inter",sans-serif;';
   ov.innerHTML=`
@@ -453,12 +532,15 @@ async function buildPDF(items,prog,setP,includePricing=true){
           const col=cc(m.product.category);
           const eS=getEffectiveSpecs({product:m.product,angle,fovRangeMult:mult,zoomPos:m.zoomPos||0});
           if(!eS)return;
-          const halfA=eS.fovDeg/2*Math.PI/180;
+          const customM=m.customCone;
+          const halfA=customM?customM.halfAngleDeg*Math.PI/180:eS.fovDeg/2*Math.PI/180;
           const dZ=eS.dori||{};
           for(const zone of['detection','observation','recognition','identification']){
             const ft=(dZ[zone]||0)*mult;if(!ft)continue;
             const rP=Math.min(ftToM(ft)/mpp,500);
-            ctx.save();ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
+            ctx.save();
+            if(customM)ctx.setLineDash([5,4]);
+            ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
             ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
             ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
             ctx.save();ctx.font='bold 10px sans-serif';ctx.fillStyle=DORI_STROKES[zone];
@@ -514,13 +596,16 @@ async function buildPDF(items,prog,setP,includePricing=true){
       placements.forEach(pl=>{
         if(pl.product.category!=='Cameras')return;
         const eSpecs2=getEffectiveSpecs(pl);if(!eSpecs2)return;
-        const halfA2=eSpecs2.fovDeg/2*Math.PI/180;
+        const custom2=pl.customCone;
+        const halfA2=custom2?custom2.halfAngleDeg*Math.PI/180:eSpecs2.fovDeg/2*Math.PI/180;
         const angle=pl.angle||0;const col=cc(pl.product.category);
         const mult2=pl.fovRangeMult||1.0;const dori2=eSpecs2.dori||{};const pxPerFt=2.5;
         for(const zone of['detection','observation','recognition','identification']){
           const ft=(dori2[zone]||0)*mult2;if(!ft)continue;
           const r=Math.min(ft*pxPerFt,500);
-          ctx.save();ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,r,angle-halfA2,angle+halfA2);ctx.closePath();
+          ctx.save();
+          if(custom2)ctx.setLineDash([5,4]);
+          ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,r,angle-halfA2,angle+halfA2);ctx.closePath();
           ctx.fillStyle=DORI_COLORS[zone];ctx.fill();ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
           ctx.save();ctx.font='bold 9px sans-serif';ctx.fillStyle=DORI_STROKES[zone];ctx.textAlign='center';ctx.textBaseline='middle';
           ctx.fillText(Math.round(ft)+'ft',pl.x+Math.cos(angle)*r*0.75,pl.y+Math.sin(angle)*r*0.75);ctx.restore();

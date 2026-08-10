@@ -5,6 +5,7 @@ function metersPerPixel(lat,zoom){return 156543.03392*Math.cos(lat*Math.PI/180)/
 // ── STATE ─────────────────────────────────────────────────────────────────
 let activeCat='All',selProd=null,showFov=true,placements=[],recentSkus=[];
 let showPricing=localStorage.getItem('specoShowPricing')!=='false'; // default on
+let customFovMode=false;
 let activeTab='blank',emapImg=null;
 let dragIdx=-1,dragOX=0,dragOY=0,dragMoved=false;
 let tipTimer=null,googleMapObj=null,mapsACInit=false;

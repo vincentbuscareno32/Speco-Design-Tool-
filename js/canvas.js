@@ -47,7 +47,8 @@ function getFovFeet(pl){
 function drawFovCone(ctx,pl){
   const specs=getEffectiveSpecs(pl);
   if(!specs)return;
-  const halfA=specs.fovDeg/2*Math.PI/180;
+  const custom=pl.customCone; // presence = this cone's angle has been manually overridden
+  const halfA=custom?custom.halfAngleDeg*Math.PI/180:specs.fovDeg/2*Math.PI/180;
   const angle=pl.angle||0;
   const col=cc(pl.product.category);
   const mult=pl.fovRangeMult||1.0;
@@ -60,6 +61,7 @@ function drawFovCone(ctx,pl){
     if(!ft)continue;
     const r=Math.min(ft*pxPerFt,500);
     ctx.save();
+    if(custom)ctx.setLineDash([5,4]); // dashed = manually adjusted, not the camera's real coverage
     ctx.beginPath();ctx.moveTo(pl.x,pl.y);
     ctx.arc(pl.x,pl.y,r,angle-halfA,angle+halfA);ctx.closePath();
     ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
@@ -80,7 +82,9 @@ function drawFovCone(ctx,pl){
   ctx.save();
   ctx.font='bold 10px sans-serif';ctx.fillStyle=col;
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(specs.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',
+  const outerLbl=(custom?Math.round(custom.halfAngleDeg*2):specs.fovDeg)+'\u00b0 \u00b7 '+Math.round(detFt)+'ft'+(custom?'  \u26a0 CUSTOM':'');
+  ctx.fillStyle=custom?'#fb923c':col;
+  ctx.fillText(outerLbl,
     pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-12);
   ctx.restore();
 
@@ -93,6 +97,24 @@ function drawFovCone(ctx,pl){
   ctx.font='bold 13px sans-serif';ctx.fillStyle=col;
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);
   ctx.restore();
+
+  // Width handle — only in Custom FOV mode. Drag to widen/narrow the cone's visual
+  // angle independent of the lens's real field of view.
+  if(customFovMode){
+    const edgeAngle=angle+halfA;
+    const wx=pl.x+Math.cos(edgeAngle)*outerR;
+    const wy=pl.y+Math.sin(edgeAngle)*outerR;
+    ctx.save();
+    ctx.translate(wx,wy);ctx.rotate(edgeAngle);
+    ctx.beginPath();ctx.rect(-7,-7,14,14);
+    ctx.fillStyle='#fb923c';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.font='bold 10px sans-serif';ctx.fillStyle='#fb923c';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('\u2194',wx,wy);
+    ctx.restore();
+  }
 
   // Person range handle beyond tip
   const ppx=pl.x+Math.cos(angle)*(outerR+28);
@@ -140,12 +162,19 @@ function getFovHandleHit(x,y){
     const detFt=(dori.detection||specs.irFt||100)*mult;
     const outerR=Math.min(detFt*2.5,500);
     const angle=pl.angle||0;
+    const halfA=pl.customCone?pl.customCone.halfAngleDeg*Math.PI/180:specs.fovDeg/2*Math.PI/180;
     const hx=pl.x+Math.cos(angle)*outerR;
     const hy=pl.y+Math.sin(angle)*outerR;
     const ppx=pl.x+Math.cos(angle)*(outerR+28);
     const ppy=pl.y+Math.sin(angle)*(outerR+28);
     if(Math.hypot(x-ppx,y-ppy)<14)return{idx:i,type:'range'};
     if(Math.hypot(x-hx,y-hy)<12)return{idx:i,type:'rotate'};
+    if(customFovMode){
+      const edgeAngle=angle+halfA;
+      const wx=pl.x+Math.cos(edgeAngle)*outerR;
+      const wy=pl.y+Math.sin(edgeAngle)*outerR;
+      if(Math.hypot(x-wx,y-wy)<12)return{idx:i,type:'width'};
+    }
   }
   return null;
 }

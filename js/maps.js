@@ -81,7 +81,8 @@ function drawMapFov(){
     // Use effective specs (handles motorized zoom)
     const eSpecs=getEffectiveSpecs({product:m.product,angle,fovRangeMult:mult,zoomPos:m.zoomPos||0});
     if(!eSpecs)return;
-    const halfA=eSpecs.fovDeg/2*Math.PI/180;
+    const custom=m.customCone;
+    const halfA=custom?custom.halfAngleDeg*Math.PI/180:eSpecs.fovDeg/2*Math.PI/180;
     const doriM=eSpecs.dori||{};
     // Draw DORI zones (real-world scale in meters)
     for(const zone of['detection','observation','recognition','identification']){
@@ -89,6 +90,7 @@ function drawMapFov(){
       if(!ft)continue;
       const rP=Math.min(ftToM(ft)/mpp,600);
       ctx.save();
+      if(custom)ctx.setLineDash([5,4]);
       ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
       ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
       ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.5;ctx.stroke();
@@ -104,8 +106,10 @@ function drawMapFov(){
     const hy=pos.y+Math.sin(angle)*rangeP;
     // Outer label
     ctx.save();
-    ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(eSpecs.fovDeg+'\u00b0 \u00b7 '+Math.round(detFtM)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);
+    ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=custom?'#fb923c':col;
+    const outerLblM=(custom?Math.round(custom.halfAngleDeg*2):eSpecs.fovDeg)+'\u00b0 \u00b7 '+Math.round(detFtM)+'ft'+(custom?'  \u26a0 CUSTOM':'');
+    ctx.fillText(outerLblM,pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);
     ctx.restore();
     // Rotation handle
     ctx.save();
@@ -128,6 +132,22 @@ function drawMapFov(){
     ctx.beginPath();ctx.moveTo(0,10);ctx.lineTo(5,18);ctx.stroke();
     ctx.restore();
     ctx.restore();
+    // Width handle — Custom FOV mode only
+    if(customFovMode){
+      const edgeAngle=angle+halfA;
+      const wx=pos.x+Math.cos(edgeAngle)*rangeP;
+      const wy=pos.y+Math.sin(edgeAngle)*rangeP;
+      ctx.save();
+      ctx.translate(wx,wy);ctx.rotate(edgeAngle);
+      ctx.beginPath();ctx.rect(-7,-7,14,14);
+      ctx.fillStyle='#fb923c';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.font='bold 10px sans-serif';ctx.fillStyle='#fb923c';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('\u2194',wx,wy);
+      ctx.restore();
+    }
     // Live focal-length readout while actively zoom-dragging (motorized only)
     if(eSpecs.isMotorized&&m._zoomDragActive){
       const mmLbl=(eSpecs.currentMm!=null?eSpecs.currentMm:eSpecs.wideMm).toFixed(1)+'mm';
@@ -146,6 +166,12 @@ function drawMapFov(){
     // Store both handle positions
     m._fovHandle={x:hx,y:hy};
     m._fovPersonHandle={x:ppx,y:ppy};
+    if(customFovMode){
+      const edgeAngle=angle+halfA;
+      m._fovWidthHandle={x:pos.x+Math.cos(edgeAngle)*rangeP,y:pos.y+Math.sin(edgeAngle)*rangeP};
+    } else {
+      m._fovWidthHandle=null;
+    }
   });
 }
 
@@ -196,7 +222,8 @@ function renderMapMarkers(){
       wrap.style.position='absolute';
       const tip=document.createElement('div');tip.className='map-marker-tip';
       const priceHtml=showPricing?`<span style="color:var(--cyan);font-weight:600;display:block;margin-top:4px">MAP: $${m.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`:'';
-      tip.innerHTML=`<strong style="font-size:13px;color:var(--blue-text)">${m.product.sku}</strong><br><span style="color:var(--text2);white-space:normal;line-height:1.4;display:block;max-width:220px">${m.product.description}</span>${priceHtml}<span style="color:var(--red);cursor:pointer;display:block;margin-top:5px;font-size:10px" onclick="removeMapMarker(${i})">\u2715 Remove</span>`;
+      const resetHtml=m.customCone?`<span style="color:#fb923c;cursor:pointer;display:block;margin-top:5px;font-size:10px" onclick="resetMapCustomCone(${i})">\u21ba Reset to accurate FOV</span>`:'';
+      tip.innerHTML=`<strong style="font-size:13px;color:var(--blue-text)">${m.product.sku}</strong><br><span style="color:var(--text2);white-space:normal;line-height:1.4;display:block;max-width:220px">${m.product.description}</span>${priceHtml}${resetHtml}<span style="color:var(--red);cursor:pointer;display:block;margin-top:5px;font-size:10px" onclick="removeMapMarker(${i})">\u2715 Remove</span>`;
       wrap.appendChild(tip);overlay.appendChild(wrap);m.el=wrap;m.tipEl=tip;
 
       // Marker mousedown — only handles LEFT button drag, stores markerIdx on element
@@ -230,7 +257,6 @@ function renderMapMarkers(){
         });
       }
     }
-    const nb=m.el.querySelector('.map-marker-num');if(nb)nb.textContent=i+1;
     m.el.style.left=pos.x+'px';m.el.style.top=pos.y+'px';
   });
 }
@@ -267,6 +293,10 @@ _overlay.addEventListener('mousedown',e=>{
         mapFovDragIdx=i;mapFovDragType='rotate';
         mapPlacePending=null;e.preventDefault();return;
       }
+      if(m._fovWidthHandle&&Math.hypot(mx-m._fovWidthHandle.x,my-m._fovWidthHandle.y)<14){
+        mapFovDragIdx=i;mapFovDragType='width';
+        mapPlacePending=null;e.preventDefault();return;
+      }
     }
   }
 
@@ -300,6 +330,14 @@ _overlay.addEventListener('mousemove',e=>{
     if(pos){
       if(mapFovDragType==='rotate'){
         m.fovAngle=Math.atan2(my-pos.y,mx-pos.x);
+      } else if(mapFovDragType==='width'){
+        const angle=m.fovAngle||0;
+        const rawAngle=Math.atan2(my-pos.y,mx-pos.x);
+        let diff=rawAngle-angle;
+        while(diff>Math.PI)diff-=2*Math.PI;
+        while(diff<-Math.PI)diff+=2*Math.PI;
+        const halfAngleDeg=Math.max(2.5,Math.min(Math.abs(diff)*180/Math.PI,85));
+        m.customCone={halfAngleDeg};
       } else {
         const dist=Math.hypot(mx-pos.x,my-pos.y);
         const eSpecs2=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
