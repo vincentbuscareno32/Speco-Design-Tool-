@@ -84,11 +84,11 @@ function drawMapFov(){
     const custom=m.customCone;
     let halfA,rangeP;
 
-    if(custom){
+    if(custom&&customFovMode){
       // Simplified single-cone view — no DORI tier breakdown/footage labels, since a
       // customized cone is a presentation aid, not measured coverage.
       halfA=custom.halfAngleDeg*Math.PI/180;
-      rangeP=Math.min(ftToM(custom.rangeFt)/mpp,600);
+      rangeP=Math.min(ftToM(custom.rangeFt)/mpp,6000);
       ctx.save();
       ctx.setLineDash([6,4]);
       ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rangeP,angle-halfA,angle+halfA);ctx.closePath();
@@ -128,7 +128,7 @@ function drawMapFov(){
 
     const hx=pos.x+Math.cos(angle)*rangeP;
     const hy=pos.y+Math.sin(angle)*rangeP;
-    const hCol=custom?'#fb923c':col;
+    const hCol=(custom&&customFovMode)?'#fb923c':col;
     // Rotation handle
     ctx.save();
     ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=hCol;ctx.lineWidth=2;ctx.stroke();
@@ -363,16 +363,15 @@ _overlay.addEventListener('mousemove',e=>{
         const zoom=googleMapObj.getZoom();
         const mpp=metersPerPixel(lat,zoom);
         const distFt=mToFt(dist*mpp);
-        if(m.customCone){
-          // Already customized — range handle keeps editing the custom length.
-          m.customCone.rangeFt=Math.max(10,Math.min(distFt,200));
-        } else if(customFovMode){
-          // Custom FOV mode is on but this cone hasn't been touched yet — start a full
-          // custom cone from the range drag, even for a fixed, non-motorized lens.
+        if(customFovMode){
+          // Custom FOV mode is on — sets/creates a full custom length regardless of
+          // whether this cone has been touched before, even for a fixed lens.
           const specsR=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
           const ccR=ensureCustomCone(m,specsR);
-          ccR.rangeFt=Math.max(10,Math.min(distFt,200));
+          ccR.rangeFt=Math.max(10,distFt);
         } else {
+          // Custom FOV mode is off — always real, accurate behavior, even if this
+          // cone has dormant custom data saved from a previous edit session.
           const eSpecs2=getEffectiveSpecs({product:m.product,angle:m.fovAngle||0,fovRangeMult:m.fovRangeMult||1,zoomPos:m.zoomPos||0});
           if(eSpecs2&&eSpecs2.isMotorized){
             m.zoomPos=zoomPosForRangeFt(eSpecs2,distFt);

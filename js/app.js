@@ -59,19 +59,16 @@ function setupCanvas(cvs,tipEl,sk){
         } else {
           const dist=Math.hypot(x-pl.x,y-pl.y);
           const distFt=dist/2.5;
-          if(pl.customCone){
-            // Already customized — the range handle keeps editing the custom length
-            // (regardless of whether edit mode is currently toggled on), same as any
-            // other always-visible handle would.
-            pl.customCone.rangeFt=Math.max(10,Math.min(distFt,200));
-          } else if(customFovMode){
-            // Custom FOV mode is on but this cone hasn't been touched yet — dragging
-            // the range handle here starts a full custom cone (length AND, once the
-            // width handle is used, angle), even for a fixed, non-motorized lens.
+          if(customFovMode){
+            // Custom FOV mode is on — the range handle sets/creates a full custom
+            // length (even for a fixed, non-motorized lens), regardless of whether
+            // this cone has been touched before.
             const specs=getEffectiveSpecs(pl);
             const cc=ensureCustomCone(pl,specs);
-            cc.rangeFt=Math.max(10,Math.min(distFt,200));
+            cc.rangeFt=Math.max(10,distFt);
           } else {
+            // Custom FOV mode is off — always the real, accurate behavior, even if
+            // this cone has dormant custom data saved from a previous edit session.
             const specs=getEffectiveSpecs(pl);
             if(specs&&specs.isMotorized){
               // Dragging the range handle IS the zoom control for motorized lenses —
@@ -276,7 +273,7 @@ function removeSku(sku){
 // ── EXPORT ────────────────────────────────────────────────────────────────
 function promptExportPricing(){
   if(!placements.length&&!mapMarkers.length){alert('No products placed yet.');return;}
-  if(hasCustomCones()){
+  if(customFovMode&&hasCustomCones()){
     const ov=document.createElement('div');
     ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;font-family:"Inter",sans-serif;';
     ov.innerHTML=`
@@ -549,9 +546,9 @@ async function buildPDF(items,prog,setP,includePricing=true){
           if(!eS)return;
           const customM=m.customCone;
           let halfA,rangeP;
-          if(customM){
+          if(customM&&customFovMode){
             halfA=customM.halfAngleDeg*Math.PI/180;
-            rangeP=Math.min(ftToM(customM.rangeFt)/mpp,500);
+            rangeP=Math.min(ftToM(customM.rangeFt)/mpp,5000);
             ctx.save();ctx.setLineDash([6,4]);
             ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rangeP,angle-halfA,angle+halfA);ctx.closePath();
             ctx.fillStyle='rgba(251,146,60,0.16)';ctx.fill();
@@ -578,8 +575,8 @@ async function buildPDF(items,prog,setP,includePricing=true){
             ctx.fillText(eS.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);ctx.restore();
           }
           const hx=pos.x+Math.cos(angle)*rangeP,hy=pos.y+Math.sin(angle)*rangeP;
-          ctx.save();ctx.beginPath();ctx.arc(hx,hy,8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=customM?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
-          ctx.fillStyle=customM?'#fb923c':col;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
+          ctx.save();ctx.beginPath();ctx.arc(hx,hy,8,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=(customM&&customFovMode)?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
+          ctx.fillStyle=(customM&&customFovMode)?'#fb923c':col;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
         });
       }
       mapMarkers.forEach((m,i)=>{
@@ -626,9 +623,9 @@ async function buildPDF(items,prog,setP,includePricing=true){
         const angle=pl.angle||0;const col=cc(pl.product.category);
         const pxPerFt=2.5;
         let halfA2,outerR;
-        if(custom2){
+        if(custom2&&customFovMode){
           halfA2=custom2.halfAngleDeg*Math.PI/180;
-          outerR=Math.min(custom2.rangeFt*pxPerFt,500);
+          outerR=Math.min(custom2.rangeFt*pxPerFt,5000);
           ctx.save();ctx.setLineDash([6,4]);
           ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,outerR,angle-halfA2,angle+halfA2);ctx.closePath();
           ctx.fillStyle='rgba(251,146,60,0.16)';ctx.fill();
@@ -654,8 +651,8 @@ async function buildPDF(items,prog,setP,includePricing=true){
         }
         const hx=pl.x+Math.cos(angle)*outerR,hy=pl.y+Math.sin(angle)*outerR;
         ctx.save();ctx.beginPath();ctx.arc(hx,hy,9,0,Math.PI*2);
-        ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=custom2?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
-        ctx.fillStyle=custom2?'#fb923c':col;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
+        ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=(custom2&&customFovMode)?'#fb923c':col;ctx.lineWidth=2;ctx.stroke();
+        ctx.fillStyle=(custom2&&customFovMode)?'#fb923c':col;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('\u27f3',hx,hy+1);ctx.restore();
       });
     }
     placements.forEach((pl,i)=>{

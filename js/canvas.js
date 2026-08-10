@@ -63,13 +63,13 @@ function drawFovCone(ctx,pl){
   const col=cc(pl.product.category);
   const pxPerFt=2.5;
 
-  if(custom){
+  if(custom&&customFovMode){
     // Simplified single-cone view. A customized cone is explicitly not measured
     // coverage, so it deliberately skips the DORI tier breakdown and footage labels
     // that would otherwise imply a precision this shape no longer has — it's here to
     // show orientation/intent only, e.g. "this camera covers the loading dock."
     const halfA=custom.halfAngleDeg*Math.PI/180;
-    const outerR=Math.min(custom.rangeFt*pxPerFt,500);
+    const outerR=Math.min(custom.rangeFt*pxPerFt,5000);
     ctx.save();
     ctx.setLineDash([6,4]);
     ctx.beginPath();ctx.moveTo(pl.x,pl.y);
@@ -206,9 +206,9 @@ function getFovHandleHit(x,y){
     const custom=pl.customCone;
     const angle=pl.angle||0;
     let outerR,halfA;
-    if(custom){
+    if(custom&&customFovMode){
       halfA=custom.halfAngleDeg*Math.PI/180;
-      outerR=Math.min(custom.rangeFt*2.5,500);
+      outerR=Math.min(custom.rangeFt*2.5,5000);
     } else {
       const dori=specs.dori||{};
       const mult=pl.fovRangeMult||1.0;
