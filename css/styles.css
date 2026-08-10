@@ -123,7 +123,7 @@ canvas{display:block;width:100%;height:100%}
 #mapOverlay.locked{pointer-events:all;cursor:crosshair}
 .map-marker{position:absolute;transform:translate(-50%,-50%);pointer-events:all;cursor:grab;user-select:none;z-index:10}
 .map-marker:active{cursor:grabbing}
-.map-marker-pin{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(13,17,23,0.78);border:1.75px solid rgba(255,255,255,0.2)}
+.map-marker-pin{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,13,19,0.55);border:2px solid rgba(255,255,255,0.2)}
 .map-marker-label{font-size:9px;font-weight:600;color:rgba(255,255,255,0.8);text-align:center;margin-top:2px;white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis;background:rgba(0,0,0,0.6);padding:1px 4px;border-radius:3px}
 .map-marker-tip{position:absolute;background:var(--bg2);border:1px solid var(--border2);border-left:2px solid var(--blue);border-radius:var(--r-lg);padding:9px 11px;font-size:11px;z-index:30;max-width:240px;display:none;left:20px;top:-10px;white-space:nowrap}
 .maps-prompt{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;text-align:center;padding:24px}

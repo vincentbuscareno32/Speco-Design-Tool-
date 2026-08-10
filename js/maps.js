@@ -189,8 +189,10 @@ function renderMapMarkers(){
     const pos=getMapPixel(m.lat,m.lng);if(!pos)return;
     if(!m.el){
       const wrap=document.createElement('div');wrap.className='map-marker';
-      const iconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="${cc(m.product.category)}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${catIcon(m.product.category)}</svg>`;
-      wrap.innerHTML=`<div class="map-marker-pin" style="border-color:${cc(m.product.category)};display:flex;align-items:center;justify-content:center">${iconSvg}</div><div class="map-marker-num" style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#0d1117;border:1px solid ${cc(m.product.category)};font-size:6.5px;font-weight:700;color:${cc(m.product.category)};display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace">${i+1}</div><div class="map-marker-label">${m.product.sku.length>8?m.product.sku.substring(0,7)+'\u2026':m.product.sku}</div>`;
+      const isCam=m.product.category==='Cameras';
+      const ringColor=isCam?'#1d7aff':cc(m.product.category);
+      const iconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="${ringColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${catIcon(m.product.category)}</svg>`;
+      wrap.innerHTML=`<div class="map-marker-pin" style="border-color:${ringColor};display:flex;align-items:center;justify-content:center">${iconSvg}</div><div class="map-marker-label">${m.product.sku.length>8?m.product.sku.substring(0,7)+'\u2026':m.product.sku}</div>`;
       wrap.style.position='absolute';
       const tip=document.createElement('div');tip.className='map-marker-tip';
       const priceHtml=showPricing?`<span style="color:var(--cyan);font-weight:600;display:block;margin-top:4px">MAP: $${m.product.map.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`:'';

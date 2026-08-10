@@ -184,28 +184,24 @@ function drawPlacements(ctx){
   }
   // Draw icons on top
   placements.forEach((pl,i)=>{
-    const c=cc(pl.product.category);
-    const r=8; // outline ring — was a 15px solid filled badge, now a lightweight 16px ring
+    const isCam=pl.product.category==='Cameras';
+    // Camera markers pick up the same bright blue as the Detection DORI zone / outer cone
+    // line, so the marker visually ties to its own cone. Other product types keep their
+    // category color, since they have no cone to relate to.
+    const ringColor=isCam?'#1d7aff':cc(pl.product.category);
+    const r=9; // single outline ring — no separate number badge, which read as a second dot
     ctx.save();
     ctx.beginPath();ctx.arc(pl.x,pl.y,r,0,Math.PI*2);
-    ctx.fillStyle='rgba(13,17,23,0.78)';ctx.fill();
-    ctx.strokeStyle=c;ctx.lineWidth=1.75;ctx.stroke();
+    ctx.fillStyle='rgba(10,13,19,0.55)';ctx.fill();
+    ctx.strokeStyle=ringColor;ctx.lineWidth=2;ctx.stroke();
     ctx.restore();
-    const iconSize=12;
-    getIconImg(pl.product.category,c,iconSize,(img)=>{
-      ctx.save();ctx.drawImage(img,pl.x-iconSize/2,pl.y-iconSize/2,iconSize,iconSize);ctx.restore();
-      ctx.save();
-      const bx=pl.x+6,by=pl.y-6,br=4.5;
-      ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);
-      ctx.fillStyle='#0d1117';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.stroke();
-      ctx.fillStyle=c;ctx.font='bold 6.5px "DM Mono",monospace';
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(i+1,bx,by+0.5);
-      ctx.restore();
+    const iconSize=13;
+    getIconImg(pl.product.category,ringColor,iconSize,(img)=>{
+      ctx.drawImage(img,pl.x-iconSize/2,pl.y-iconSize/2,iconSize,iconSize);
     });
     ctx.save();
     ctx.font='bold 9px "Barlow Condensed",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.fillStyle='rgba(255,255,255,0.6)';
     const lbl=pl.product.sku.length>8?pl.product.sku.substring(0,7)+'\u2026':pl.product.sku;
     ctx.fillText(lbl,pl.x,pl.y+r+3);
     ctx.restore();
