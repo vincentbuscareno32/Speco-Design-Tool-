@@ -21,21 +21,38 @@ body{background:#0b0e14;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0;m
 .btn-signout{padding:8px 12px;border-radius:6px;background:transparent;border:1.5px solid #2a3345;color:#94a3b8;font-size:12px;cursor:pointer}
 .main{max-width:1100px;margin:0 auto;padding:28px 24px}
 .section{margin-bottom:36px}
-.section-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#3d4f6b;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#f1f5f9;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .section-title .count{background:#131920;color:#5b6b85;padding:1px 7px;border-radius:10px;font-size:10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-.card{background:#131920;border:1px solid #1e2736;border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.card{background:#131920;border:1px solid #1e2736;border-radius:8px;overflow:hidden;cursor:pointer;transition:border-color .15s;position:relative}
 .card:hover{border-color:#1d7aff}
 .card-thumb{height:88px;background:linear-gradient(135deg,#0f2140,#1c2333);position:relative}
 .card-badge{position:absolute;top:6px;right:6px;background:#0d1117cc;border-radius:4px;padding:2px 6px;font-size:9px;color:#60a5fa;display:flex;align-items:center;gap:3px}
+.card-menu-btn{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:5px;background:#0d1117cc;border:none;color:#8899aa;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;line-height:1}
+.card-menu-btn:hover{background:#1c2333;color:#e2e8f0}
+.card-dropdown{position:absolute;top:32px;right:6px;background:#131920;border:1px solid #2a3345;border-radius:6px;min-width:120px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden}
+.card-dropdown button{width:100%;text-align:left;padding:8px 12px;background:none;border:none;color:#c5cedb;font-size:12px;cursor:pointer;display:block;font-family:inherit}
+.card-dropdown button:hover{background:#1c2333}
+.card-dropdown button.danger{color:#f87171}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:#131920;border:1px solid #2a3345;border-radius:10px;padding:22px;width:360px;max-width:90vw}
+.modal h3{font-size:14px;margin-bottom:14px;color:#e2e8f0;font-weight:600}
+.modal select{width:100%;padding:8px;border-radius:6px;background:#0d1117;border:1px solid #1e2736;color:#e2e8f0;font-size:12px;margin-bottom:8px;font-family:inherit}
+.share-list-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:11.5px;color:#8899aa;border-bottom:1px solid #1c2333}
+.share-list-item button{background:none;border:none;color:#f87171;cursor:pointer;font-size:11px;font-family:inherit}
+.modal-actions{display:flex;gap:8px;margin-top:14px}
+.modal-actions button{flex:1;padding:9px;border-radius:6px;border:none;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-primary{background:#1d7aff;color:#e0f0ff}
+.btn-primary:disabled{opacity:0.5;cursor:default}
+.btn-cancel{background:transparent;border:1.5px solid #2a3345;color:#94a3b8}
 .card-body{padding:10px 12px}
 .card-name{font-size:12.5px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-meta{font-size:10.5px;color:#3d4f6b;margin-top:3px}
 .card-owner{font-size:10px;color:#5b6b85;margin-top:5px;display:flex;align-items:center;gap:5px}
 .card-owner .dot{width:5px;height:5px;border-radius:50%;background:#2a3345}
-.new-card{border:1.5px dashed #1e2736;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;color:#3d4f6b;background:transparent}
+.new-card{border:1.5px dashed #4a5875;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;color:#8899aa;background:transparent}
 .new-card:hover{border-color:#1d7aff;color:#60a5fa}
-.empty{font-size:12px;color:#3d4f6b;padding:20px;text-align:center;border:1px dashed #1e2736;border-radius:8px}
+.empty{font-size:12px;color:#8899aa;padding:20px;text-align:center;border:1px dashed #4a5875;border-radius:8px}
 .loading{text-align:center;color:#3d4f6b;font-size:12px;padding:60px}
 .coming-soon-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#131920;border:1px solid #2a3345;color:#e2e8f0;font-size:12.5px;padding:11px 18px;border-radius:8px;opacity:0;pointer-events:none;transition:all .2s;z-index:999}
 .coming-soon-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -76,6 +93,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentUser = null;
 let membership = null; // {dealer_id, role, full_name}
 let sectionsData = {}; // { sectionKey: [ {id,name,client,updated_at,ownerName,isOwner} ] }
+let dealerRoster = []; // [{user_id, full_name}] — used to populate the Share picker
+let dealerRosterNameById = {};
+let currentIsAdmin = false;
+let openMenuId = null;
 
 function comingSoon(){
   const t = document.getElementById('toast');
@@ -120,14 +141,99 @@ function renderCard(p){
   div.dataset.search = (p.name + ' ' + (p.ownerName||'')).toLowerCase();
   div.onclick = () => openProject(p.id);
   const ownerRow = p.isOwner ? '' : `<div class="card-owner"><span class="dot"></span>${p.ownerName || 'Unknown'}</div>`;
+  const safeName = p.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const menuBtn = p.canManage ? `<button class="card-menu-btn" onclick="toggleCardMenu(event,'${p.id}')">&#8942;</button>` : '';
+  const dropdown = p.canManage ? `
+    <div class="card-dropdown hidden" id="menu-${p.id}">
+      <button onclick="event.stopPropagation();closeCardMenu();openShareModal('${p.id}','${safeName}')">Share</button>
+      <button class="danger" onclick="event.stopPropagation();closeCardMenu();deleteProjectConfirm('${p.id}','${safeName}')">Delete</button>
+    </div>` : '';
   div.innerHTML = `
-    <div class="card-thumb"></div>
+    <div class="card-thumb">${menuBtn}</div>
     <div class="card-body">
       <div class="card-name">${p.name}</div>
       <div class="card-meta">Edited ${timeAgo(p.updated_at)}</div>
       ${ownerRow}
-    </div>`;
+    </div>
+    ${dropdown}`;
   return div;
+}
+
+function toggleCardMenu(e, id){
+  e.stopPropagation();
+  const menu = document.getElementById('menu-'+id);
+  const wasOpen = openMenuId === id;
+  closeCardMenu();
+  if(!wasOpen){ menu.classList.remove('hidden'); openMenuId = id; }
+}
+function closeCardMenu(){
+  if(openMenuId){
+    const m = document.getElementById('menu-'+openMenuId);
+    if(m)m.classList.add('hidden');
+    openMenuId = null;
+  }
+}
+document.addEventListener('click', closeCardMenu);
+
+async function deleteProjectConfirm(id, name){
+  if(!confirm(`Delete "${name}"? This cannot be undone.`))return;
+  const { error } = await sb.from('projects').delete().eq('id', id);
+  if(error){ alert('Could not delete this project.'); return; }
+  loadDashboard();
+}
+
+async function openShareModal(projectId, projectName){
+  const { data: existingShares } = await sb.from('project_shares')
+    .select('id, permission, shared_with_user_id').eq('project_id', projectId);
+  const shareList = (existingShares||[]).map(s => ({...s, name: dealerRosterNameById[s.shared_with_user_id] || 'Unknown'}));
+  const alreadySharedIds = new Set(shareList.map(s => s.shared_with_user_id));
+  const candidates = dealerRoster.filter(r => r.user_id !== currentUser.id && !alreadySharedIds.has(r.user_id));
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <h3>Share "${projectName}"</h3>
+      <div id="shareListWrap">
+        ${shareList.length ? shareList.map(s => `
+          <div class="share-list-item">
+            <span>${s.name} \u00b7 ${s.permission}</span>
+            <button onclick="revokeShare('${s.id}','${projectId}','${projectName}')">Remove</button>
+          </div>`).join('') : '<div style="font-size:11.5px;color:#3d4f6b;padding:6px 0;">Not shared with anyone yet.</div>'}
+      </div>
+      <div style="margin-top:14px;">
+        <select id="shareUserSelect">
+          ${candidates.length ? candidates.map(c => `<option value="${c.user_id}">${(c.full_name||'Unknown').replace(/</g,'&lt;')}</option>`).join('') : '<option value="">No teammates available</option>'}
+        </select>
+        <select id="sharePermSelect">
+          <option value="view">Can view</option>
+          <option value="edit">Can edit</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="this.closest('.modal-overlay').remove()">Close</button>
+        <button class="btn-primary" id="shareSubmitBtn" onclick="addShare('${projectId}','${projectName}')" ${candidates.length?'':'disabled'}>Share</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay)overlay.remove(); });
+}
+
+async function addShare(projectId, projectName){
+  const userId = document.getElementById('shareUserSelect').value;
+  const permission = document.getElementById('sharePermSelect').value;
+  if(!userId)return;
+  const { error } = await sb.from('project_shares').insert({ project_id: projectId, shared_with_user_id: userId, permission });
+  if(error){ alert('Could not share this project.'); return; }
+  document.querySelector('.modal-overlay').remove();
+  openShareModal(projectId, projectName);
+}
+
+async function revokeShare(shareId, projectId, projectName){
+  const { error } = await sb.from('project_shares').delete().eq('id', shareId);
+  if(error){ alert('Could not remove this share.'); return; }
+  document.querySelector('.modal-overlay').remove();
+  openShareModal(projectId, projectName);
 }
 
 function renderSection(key, title, projects, showEmptyNewTile){
@@ -211,6 +317,9 @@ async function loadDashboard(){
     .select('user_id, full_name').eq('dealer_id', membership.dealer_id);
   const nameByUserId = {};
   (roster || []).forEach(r => { nameByUserId[r.user_id] = r.full_name; });
+  dealerRoster = roster || [];
+  dealerRosterNameById = nameByUserId;
+  currentIsAdmin = isAdmin;
 
   const [{ data: ownProjects }, { data: shareRows }, { data: allDealerProjects }] = await Promise.all([
     sb.from('projects').select('id,name,client,updated_at,owner_id').eq('owner_id', currentUser.id).order('updated_at',{ascending:false}),
@@ -218,17 +327,20 @@ async function loadDashboard(){
     isAdmin ? sb.from('projects').select('id,name,client,updated_at,owner_id').eq('dealer_id', membership.dealer_id).order('updated_at',{ascending:false}) : Promise.resolve({data:[]})
   ]);
 
-  const yours = (ownProjects || []).map(p => ({...p, isOwner:true}));
+  // canManage mirrors the RLS rules exactly: owner or admin can delete/share.
+  // A view/edit share recipient who isn't an admin gets neither action —
+  // showing a menu that would just fail on click isn't worth the clutter.
+  const yours = (ownProjects || []).map(p => ({...p, isOwner:true, canManage:true}));
   const sharedIds = new Set();
   const shared = (shareRows || []).filter(r => r.projects).map(r => {
     sharedIds.add(r.projects.id);
-    return {...r.projects, ownerName: nameByUserId[r.projects.owner_id], isOwner:false};
+    return {...r.projects, ownerName: nameByUserId[r.projects.owner_id], isOwner:false, canManage:isAdmin};
   });
   let company = [];
   if(isAdmin){
     company = (allDealerProjects || [])
       .filter(p => p.owner_id !== currentUser.id && !sharedIds.has(p.id))
-      .map(p => ({...p, ownerName: nameByUserId[p.owner_id], isOwner:false}));
+      .map(p => ({...p, ownerName: nameByUserId[p.owner_id], isOwner:false, canManage:true}));
   }
 
   const main = document.getElementById('main');
