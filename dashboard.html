@@ -314,7 +314,7 @@ async function loadDashboard(){
   // any project not owned by the current user (dealer_members is the only
   // public-schema table with names; auth.users itself isn't queryable client-side).
   const { data: roster } = await sb.from('dealer_members')
-    .select('user_id, full_name').eq('dealer_id', membership.dealer_id);
+    .select('user_id, full_name').eq('dealer_id', membership.dealer_id).eq('status','approved');
   const nameByUserId = {};
   (roster || []).forEach(r => { nameByUserId[r.user_id] = r.full_name; });
   dealerRoster = roster || [];
