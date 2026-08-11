@@ -56,7 +56,7 @@ body{background:#0b0e14;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0;m
     <span id="adminBadge" class="admin-badge hidden">Partner Admin</span>
     <span id="pendingBadge" class="admin-badge hidden" style="background:#2a0f0f;color:#f87171;cursor:pointer;" title="Pending applications waiting on your review — approve them in Supabase for now"></span>
     <span class="user-name" id="userNameLabel"></span>
-    <button class="btn-new" onclick="comingSoon()">+ New Project</button>
+    <button class="btn-new" onclick="createNewProject()">+ New Project</button>
     <button class="btn-signout" onclick="doSignOut()">Sign out</button>
   </div>
 </div>
@@ -83,6 +83,20 @@ function comingSoon(){
   setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+function openProject(id){
+  window.location.href = 'index.html?project=' + encodeURIComponent(id);
+}
+
+async function createNewProject(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session)return;
+  const { data: row, error } = await sb.from('projects')
+    .insert({ dealer_id: membership.dealer_id, owner_id: session.user.id, name: 'Untitled Project' })
+    .select('id').single();
+  if(error || !row){ alert('Could not create a new project. Please try again.'); return; }
+  openProject(row.id);
+}
+
 function timeAgo(iso){
   const d = new Date(iso), now = new Date();
   const mins = Math.round((now - d) / 60000);
@@ -104,7 +118,7 @@ function renderCard(p){
   const div = document.createElement('div');
   div.className = 'card';
   div.dataset.search = (p.name + ' ' + (p.ownerName||'')).toLowerCase();
-  div.onclick = comingSoon;
+  div.onclick = () => openProject(p.id);
   const ownerRow = p.isOwner ? '' : `<div class="card-owner"><span class="dot"></span>${p.ownerName || 'Unknown'}</div>`;
   div.innerHTML = `
     <div class="card-thumb"></div>
@@ -127,7 +141,7 @@ function renderSection(key, title, projects, showEmptyNewTile){
   if(showEmptyNewTile){
     const newCard = document.createElement('div');
     newCard.className = 'card new-card';
-    newCard.onclick = comingSoon;
+    newCard.onclick = createNewProject;
     newCard.innerHTML = '<div style="font-size:20px">+</div><div style="font-size:11px;margin-top:4px">New project</div>';
     grid.appendChild(newCard);
   }

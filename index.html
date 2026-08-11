@@ -42,6 +42,12 @@
     <input id="clientName" placeholder="Installer / client name" />
   </div>
   <div class="hdr-btns">
+    <span id="projectBar" style="display:none;align-items:center;gap:8px;">
+      <a href="dashboard.html" style="color:#60a5fa;font-size:11px;text-decoration:none;white-space:nowrap;">&larr; Dashboard</a>
+      <button class="hbtn" id="projSaveBtn" onclick="saveCurrentProject()" style="background:#1d7aff;color:#e0f0ff;border:none;">Save</button>
+      <span id="projSaveStatus" style="font-size:10px;color:#3d4f6b;white-space:nowrap;"></span>
+      <div class="sep"></div>
+    </span>
     <button class="hbtn on" id="btnFov" onclick="toggleFov(this)">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>FOV
     </button>
@@ -185,5 +191,7 @@
 <script src="js/app.js"></script>
 <script src="js/maps.js"></script>
 <script src="js/lens.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/projectSync.js"></script>
 </body>
 </html>
