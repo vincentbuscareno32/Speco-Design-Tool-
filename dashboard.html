@@ -54,6 +54,7 @@ body{background:#0b0e14;font-family:'Inter',system-ui,sans-serif;color:#e2e8f0;m
   </div>
   <div class="header-right">
     <span id="adminBadge" class="admin-badge hidden">Partner Admin</span>
+    <span id="pendingBadge" class="admin-badge hidden" style="background:#2a0f0f;color:#f87171;cursor:pointer;" title="Pending applications waiting on your review — approve them in Supabase for now"></span>
     <span class="user-name" id="userNameLabel"></span>
     <button class="btn-new" onclick="comingSoon()">+ New Project</button>
     <button class="btn-signout" onclick="doSignOut()">Sign out</button>
@@ -175,7 +176,19 @@ async function loadDashboard(){
   membership = rows[0];
   document.getElementById('userNameLabel').textContent = membership.full_name || currentUser.email;
   const isAdmin = membership.role === 'partner_admin';
-  if(isAdmin) document.getElementById('adminBadge').classList.remove('hidden');
+  if(isAdmin){
+    document.getElementById('adminBadge').classList.remove('hidden');
+    // Pending-applications badge — the "you'll notice it when you log in" alert we
+    // settled on for launch, ahead of a real push-notification version later.
+    const { count: pendingCount } = await sb.from('dealer_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('dealer_id', membership.dealer_id).eq('status', 'pending');
+    if(pendingCount > 0){
+      const pb = document.getElementById('pendingBadge');
+      pb.textContent = pendingCount + (pendingCount === 1 ? ' Pending Request' : ' Pending Requests');
+      pb.classList.remove('hidden');
+    }
+  }
 
   // Pull the dealer roster once so we can resolve owner_id -> display name for
   // any project not owned by the current user (dealer_members is the only
