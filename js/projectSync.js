@@ -6,12 +6,27 @@
 let currentProjectId=null;
 let projectSb=null;
 
+// Only these fields are real, persistent placement data — everything else that ends up
+// attached to a placement/marker at runtime (el, tipEl, cached handle positions, drag
+// flags) is transient DOM/UI state. Saving those directly caused real bugs: a stale
+// el:{} left over from JSON round-tripping a DOM reference is truthy, which tricked
+// renderMapMarkers()'s "if(!m.el)" check into thinking a marker's pin already existed,
+// so it silently never got (re)created after loading a saved project.
+function cleanPlacement(pl){
+  return {x:pl.x,y:pl.y,angle:pl.angle,product:pl.product,zoomPos:pl.zoomPos,
+          fovRangeMult:pl.fovRangeMult,customCone:pl.customCone};
+}
+function cleanMapMarker(m){
+  return {lat:m.lat,lng:m.lng,fovAngle:m.fovAngle,product:m.product,zoomPos:m.zoomPos,
+          fovRangeMult:m.fovRangeMult,customCone:m.customCone};
+}
+
 function serializeProject(){
   return {
     version:1,
     activeTab,
-    placements,
-    mapMarkers,
+    placements: placements.map(cleanPlacement),
+    mapMarkers: mapMarkers.map(cleanMapMarker),
     emapImgSrc: emapImg ? emapImg.src : null,
     mapsAddress: document.getElementById('mapsAddress') ? document.getElementById('mapsAddress').value : '',
     mapCenter: (activeTab==='maps'&&googleMapObj) ? {lat:googleMapObj.getCenter().lat(),lng:googleMapObj.getCenter().lng()} : null,
@@ -24,7 +39,11 @@ function deserializeProject(data){
   if(!data||!data.version)return; // brand-new project — nothing saved yet, leave the tool at its normal blank default
   placements = data.placements||[];
   mapMarkers = data.mapMarkers||[];
-  mapLocked = !!data.mapLocked;
+  // mapLocked is intentionally NOT set as a raw variable here — toggleMapLock() is the
+  // only thing that actually applies it (button state, overlay class, and critically
+  // googleMapObj.setOptions({draggable:false,...})). Setting just the variable left the
+  // underlying map fully draggable, so clicks were read as pans, not placements.
+  const wantLocked=!!data.mapLocked;
   if(data.mapsAddress && document.getElementById('mapsAddress')){
     document.getElementById('mapsAddress').value=data.mapsAddress;
   }
@@ -38,10 +57,15 @@ function deserializeProject(data){
       whenGoogleMapsReady(()=>{
         if(!googleMapObj){
           buildMap(data.mapCenter); // now self-renders markers once tiles actually settle
-          if(data.mapZoom)onMapReady(()=>{googleMapObj.setZoom(data.mapZoom);});
+          if(data.mapZoom)onMapReady(()=>{
+            googleMapObj.setZoom(data.mapZoom);
+            if(wantLocked)toggleMapLock();
+          });
+          else if(wantLocked)onMapReady(()=>{toggleMapLock();});
         } else {
           googleMapObj.setCenter(data.mapCenter);
           if(data.mapZoom)googleMapObj.setZoom(data.mapZoom);
+          if(wantLocked!==mapLocked)toggleMapLock();
         }
       });
     } else {

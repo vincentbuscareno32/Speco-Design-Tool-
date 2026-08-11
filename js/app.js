@@ -560,7 +560,7 @@ async function buildPDF(items,prog,setP,includePricing=true){
             const dZ=eS.dori||{};
             for(const zone of['detection','observation','recognition','identification']){
               const ft=(dZ[zone]||0)*mult;if(!ft)continue;
-              const rP=Math.min(ftToM(ft)/mpp,500);
+              const rP=Math.min(ftToM(ft)/mpp,5000);
               ctx.save();
               ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
               ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
@@ -570,7 +570,7 @@ async function buildPDF(items,prog,setP,includePricing=true){
               ctx.fillText(Math.round(ft)+'ft',pos.x+Math.cos(angle)*rP*0.72,pos.y+Math.sin(angle)*rP*0.72);ctx.restore();
             }
             const detFt=(dZ.detection||eS.irFt||100)*mult;
-            rangeP=Math.min(ftToM(detFt)/mpp,500);
+            rangeP=Math.min(ftToM(detFt)/mpp,5000);
             ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
             ctx.fillText(eS.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt)+'ft',pos.x+Math.cos(angle)*rangeP*0.5,pos.y+Math.sin(angle)*rangeP*0.5-12);ctx.restore();
           }
@@ -637,7 +637,7 @@ async function buildPDF(items,prog,setP,includePricing=true){
           const mult2=pl.fovRangeMult||1.0;const dori2=eSpecs2.dori||{};
           for(const zone of['detection','observation','recognition','identification']){
             const ft=(dori2[zone]||0)*mult2;if(!ft)continue;
-            const r=Math.min(ft*pxPerFt,500);
+            const r=Math.min(ft*pxPerFt,5000);
             ctx.save();
             ctx.beginPath();ctx.moveTo(pl.x,pl.y);ctx.arc(pl.x,pl.y,r,angle-halfA2,angle+halfA2);ctx.closePath();
             ctx.fillStyle=DORI_COLORS[zone];ctx.fill();ctx.strokeStyle=DORI_STROKES[zone];ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
@@ -645,7 +645,7 @@ async function buildPDF(items,prog,setP,includePricing=true){
             ctx.fillText(Math.round(ft)+'ft',pl.x+Math.cos(angle)*r*0.75,pl.y+Math.sin(angle)*r*0.75);ctx.restore();
           }
           const detFt2=(dori2.detection||eSpecs2.irFt||100)*mult2;
-          outerR=Math.min(detFt2*pxPerFt,500);
+          outerR=Math.min(detFt2*pxPerFt,5000);
           ctx.save();ctx.font='bold 11px sans-serif';ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';
           ctx.fillText(eSpecs2.fovDeg+'\u00b0 \u00b7 '+Math.round(detFt2)+'ft',pl.x+Math.cos(angle)*outerR*0.5,pl.y+Math.sin(angle)*outerR*0.5-10);ctx.restore();
         }

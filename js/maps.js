@@ -131,7 +131,7 @@ function drawMapFov(){
       for(const zone of['detection','observation','recognition','identification']){
         const ft=(doriM[zone]||0)*mult;
         if(!ft)continue;
-        const rP=Math.min(ftToM(ft)/mpp,600);
+        const rP=Math.min(ftToM(ft)/mpp,6000);
         ctx.save();
         ctx.beginPath();ctx.moveTo(pos.x,pos.y);ctx.arc(pos.x,pos.y,rP,angle-halfA,angle+halfA);ctx.closePath();
         ctx.fillStyle=DORI_COLORS[zone];ctx.fill();
@@ -143,7 +143,7 @@ function drawMapFov(){
         ctx.restore();
       }
       const detFtM=(doriM.detection||eSpecs.irFt||100)*mult;
-      rangeP=Math.min(ftToM(detFtM)/mpp,600);
+      rangeP=Math.min(ftToM(detFtM)/mpp,6000);
       ctx.save();
       ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillStyle=col;

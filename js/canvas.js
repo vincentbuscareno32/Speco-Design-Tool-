@@ -99,7 +99,7 @@ function drawFovCone(ctx,pl){
   for(const zone of['detection','observation','recognition','identification']){
     const ft=(dori[zone]||0)*mult;
     if(!ft)continue;
-    const r=Math.min(ft*pxPerFt,500);
+    const r=Math.min(ft*pxPerFt,5000);
     ctx.save();
     ctx.beginPath();ctx.moveTo(pl.x,pl.y);
     ctx.arc(pl.x,pl.y,r,angle-halfA,angle+halfA);ctx.closePath();
@@ -117,7 +117,7 @@ function drawFovCone(ctx,pl){
 
   // Outer label: FOV + detection range
   const detFt=(dori.detection||specs.irFt||100)*mult;
-  const outerR=Math.min(detFt*pxPerFt,500);
+  const outerR=Math.min(detFt*pxPerFt,5000);
   ctx.save();
   ctx.font='bold 10px sans-serif';ctx.fillStyle=col;
   ctx.textAlign='center';ctx.textBaseline='middle';
@@ -213,7 +213,7 @@ function getFovHandleHit(x,y){
       const dori=specs.dori||{};
       const mult=pl.fovRangeMult||1.0;
       const detFt=(dori.detection||specs.irFt||100)*mult;
-      outerR=Math.min(detFt*2.5,500);
+      outerR=Math.min(detFt*2.5,5000);
       halfA=specs.fovDeg/2*Math.PI/180;
     }
     const hx=pl.x+Math.cos(angle)*outerR;
