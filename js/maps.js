@@ -43,7 +43,32 @@ function buildMap(center){
     document.getElementById('lockHint').style.display='inline';
     googleMapObj.addListener('bounds_changed',()=>{renderMapMarkers();drawMapFov();});
     googleMapObj.addListener('zoom_changed',()=>{renderMapMarkers();drawMapFov();});
+    // These listeners only cover FUTURE pans/zooms — without this, any markers already
+    // in memory (e.g. loaded from a saved project) never get their first render, since
+    // nothing else triggers renderMapMarkers() for the map's very first settle.
+    renderMapMarkers();drawMapFov();
   });
+}
+
+// Runs cb once the map actually has usable bounds — immediately if already ready,
+// otherwise on the next 'idle' event. More reliable than guessing with a timeout,
+// since tile load time varies with network speed.
+function onMapReady(cb){
+  if(googleMapObj&&googleMapObj.getBounds()){cb();return;}
+  if(googleMapObj)google.maps.event.addListenerOnce(googleMapObj,'idle',cb);
+}
+
+// The Maps JS API script tag loads async — on a fresh page load (e.g. reopening a
+// saved project straight into the maps tab) there's a real race where google.maps
+// isn't defined yet. Waits for it rather than assuming it's already there.
+function whenGoogleMapsReady(cb){
+  if(window.google&&window.google.maps){cb();return;}
+  let n=0;
+  const t=setInterval(()=>{
+    n++;
+    if(window.google&&window.google.maps){clearInterval(t);cb();}
+    else if(n>50){clearInterval(t);}
+  },100);
 }
 
 // ── GOOGLE MAPS FOV CANVAS ────────────────────────────────────────────────

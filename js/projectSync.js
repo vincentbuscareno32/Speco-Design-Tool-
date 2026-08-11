@@ -35,10 +35,15 @@ function deserializeProject(data){
       setTimeout(()=>{resizeCanvas('emap');drawEmap();},50);
     } else if(data.activeTab==='maps' && data.mapCenter){
       showMap();
-      if(!googleMapObj) buildMap(data.mapCenter);
-      else googleMapObj.setCenter(data.mapCenter);
-      if(data.mapZoom) setTimeout(()=>{if(googleMapObj)googleMapObj.setZoom(data.mapZoom);},300);
-      setTimeout(()=>{renderMapMarkers();drawMapFov();},500);
+      whenGoogleMapsReady(()=>{
+        if(!googleMapObj){
+          buildMap(data.mapCenter); // now self-renders markers once tiles actually settle
+          if(data.mapZoom)onMapReady(()=>{googleMapObj.setZoom(data.mapZoom);});
+        } else {
+          googleMapObj.setCenter(data.mapCenter);
+          if(data.mapZoom)googleMapObj.setZoom(data.mapZoom);
+        }
+      });
     } else {
       redraw();
     }
@@ -74,13 +79,18 @@ function showProjectBar(){
   if(bar)bar.style.display='flex';
 }
 
-async function initProjectMode(){
+// The site now requires being signed in for every visit — this runs on every load of
+// index.html, not just when opened with a specific project. No session -> login.html.
+// Signed in but no specific project -> dashboard.html, since standalone/unsaved use of
+// the tool is no longer offered; every session should be tied to a real saved project.
+async function gateIndexAccess(){
+  const authGate=document.getElementById('authGate');
   const params=new URLSearchParams(window.location.search);
   const projectId=params.get('project');
-  if(!projectId)return; // no project param — standalone tool, unchanged behavior
 
   if(typeof supabase==='undefined'){
-    console.error('Supabase client library failed to load — project save/load unavailable.');
+    console.error('Supabase client library failed to load — cannot verify access.');
+    if(authGate)authGate.innerHTML='<div style="font-family:Inter,sans-serif;font-size:12px;color:#f87171;">Could not load. Please refresh.</div>';
     return;
   }
   projectSb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -88,6 +98,11 @@ async function initProjectMode(){
   const {data:{session}}=await projectSb.auth.getSession();
   if(!session){
     window.location.href='login.html';
+    return;
+  }
+
+  if(!projectId){
+    window.location.href='dashboard.html';
     return;
   }
 
@@ -104,6 +119,7 @@ async function initProjectMode(){
   document.getElementById('clientName').value=row.client||'';
   showProjectBar();
   deserializeProject(row.data);
+  if(authGate)authGate.style.display='none'; // access confirmed — reveal the tool
 }
 
-initProjectMode();
+gateIndexAccess();
