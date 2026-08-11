@@ -124,8 +124,7 @@ async function checkMembershipAndRoute(user){
     return;
   }
   // approved
-  showStatus('Welcome' + (m.full_name ? ', ' + m.full_name.split(' ')[0] : '') + '!',
-    (m.role === 'partner_admin' ? 'Partner admin' : 'Team member') + ' \u00b7 Dashboard coming soon.');
+  window.location.href = 'dashboard.html';
 }
 
 // If already signed in (existing session), skip straight to the status check
